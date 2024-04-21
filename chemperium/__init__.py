@@ -1,1 +1,1 @@
-from training.predict import Thermo, Liquid
+from chemperium.training.predict import Thermo, Liquid
