@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='chemperium',
     version='0.1',
-    packages=['chemperium', 'caesar-data'],
+    packages=['chemperium', 'caesar-data', 'chemperium.training'],
     url='',
     license='',
     author='Maarten Dobbelaere',
