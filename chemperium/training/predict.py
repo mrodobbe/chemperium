@@ -1,7 +1,7 @@
 from chemperium.data.load_data import DataLoader
 from chemperium.data.load_test_data import read_csv, load_models, TestInputArguments
 from chemperium.training.run import test_external_dataset
-from chemperium.postprocessing.thermodynamics import get_nasa_coefficients, enthalpy_fit, get_chemkin_file
+from chemperium.postprocessing.thermodynamics import *
 from chemperium.postprocessing.uncertainty_quantification import add_reliability_score
 from typing import Union
 import pandas as pd
@@ -39,11 +39,11 @@ class Thermo:
         self.inputs.save_dir = self.inputs.dir + f"/caesar-data/thermo/{self.method}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
-    def predict(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
-                llot: Union[float, list, None] = None, t: float = 298.15,
-                quality_check: bool = False) -> pd.DataFrame:
+    def predict_enthalpy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
+                         llot: Union[float, list, None] = None, t: float = 298.15,
+                         quality_check: bool = False) -> pd.DataFrame:
         """
-        This function predicts the thermochemical property for the corresponding SMILES.
+        This function predicts a thermochemical property for the corresponding SMILES.
         :param xyz: Either a string of the xyz coordinates or a list of xyz coordinate strings.
         :param smiles: Either a SMILES string or a list of SMILES strings.
         :param llot: Low level-of-theory enthalpy of formation estimate
@@ -52,25 +52,8 @@ class Thermo:
         :return: Predictions are returned as a Pandas DataFrame
         """
 
-        if self.dimension == "3d" and xyz is None:
-            raise ValueError("Parameter xyz cannot be None! "
-                             "You have to provide 3D coordinates to make predictions with a 3D model.")
-
-        elif self.dimension == "3d" and t != 298.15 and llot is None:
-            raise ValueError("Please provide low level-of-theory Dh298 estimate "
-                             "to calculate enthalpies of formation at temperatures other than 298.15 K.")
-
-        if type(smiles) is str:
-            df_out = read_csv(self.inputs, smiles=[smiles], xyz_list=[xyz])
-            llot = [llot]
-        elif type(smiles) is list:
-            df_out = read_csv(self.inputs, smiles=smiles, xyz_list=xyz)
-        else:
-            raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
-
-        dl_test = DataLoader(input_pars=self.inputs, transfer=False, test=True, df=df_out)
-        dl_test.scaler = self.scaler
-        df_pred = test_external_dataset(self.models, self.scaler, self.inputs, dl_test, return_results=True)
+        df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, llot, t,
+                                                      self.models, self.scaler, self.inputs, "h")
 
         if t == 298.15:
             if self.dimension == "2d":
@@ -99,47 +82,94 @@ class Thermo:
                                                                       dl_test.df["RDMol"].tolist())
 
         else:
-            temperatures = np.array([298.15, 303.15, 313.15, 323.15, 333.15, 343.15, 353.15,
-                                     363.15, 373.15, 383.15, 393.15, 403.15, 413.15, 423.15,
-                                     448.15, 473.15, 498.15, 523.15, 548.15, 573.15, 598.15,
-                                     623.15, 648.15, 673.15, 698.15, 723.15, 748.15, 773.15,
-                                     798.15, 823.15, 848.15, 873.15, 923.15, 973.15, 1023.15,
-                                     1073.15, 1123.15, 1173.15, 1223.15, 1273.15, 1323.15, 1373.15,
-                                     1423.15, 1473.15, 1523.15])
-            cp_keys = [f"{key}_prediction" for key in self.inputs.property[2:]]
+            temperatures, cp_keys = get_heat_capacity_values(self.inputs)
+            t_c = int(t)
+            s298 = df_pred["S298_prediction"].to_numpy()
+            cp = df_pred[cp_keys].to_numpy()
 
             if self.dimension == "2d":
-                nasa_coefficients = get_nasa_coefficients(temperatures, h298=df_pred["H298_prediction"].to_numpy(),
-                                                          s298=df_pred["S298_prediction"].to_numpy(),
-                                                          cp_values=df_pred[cp_keys].to_numpy())
-                a1, a2, a3, a4, a5, a6, a7 = nasa_coefficients.T
-                h = enthalpy_fit(298.15, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
-                df_output = df_pred[["smiles"]].copy()
-                t_c = int(t)
-                df_output[f"H{t_c}_prediction"] = h
-                df_output[f"H{t_c}_uncertainty"] = df_pred["H298_uncertainty"].to_numpy()
-                if quality_check:
-                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                      self.inputs.save_dir,
-                                                                      df_output[f"H{t_c}_uncertainty"].tolist(),
-                                                                      dl_test.df["RDMol"].tolist())
+                h298 = df_pred["H298_prediction"].to_numpy()
+                unc = df_pred["H298_uncertainty"].to_numpy()
 
             else:
                 h298 = df_pred["H298_residual_prediction"].to_numpy() + llot
-                nasa_coefficients = get_nasa_coefficients(temperatures, h298=h298,
-                                                          s298=df_pred["S298_prediction"].to_numpy(),
-                                                          cp_values=df_pred[cp_keys].to_numpy())
-                a1, a2, a3, a4, a5, a6, a7 = nasa_coefficients.T
-                h = enthalpy_fit(298.15, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
-                df_output = df_pred[["smiles"]].copy()
-                t_c = int(t)
-                df_output[f"H{t_c}_prediction"] = h
-                df_output[f"H{t_c}_uncertainty"] = df_pred["H298_residual_uncertainty"].to_numpy()
-                if quality_check:
-                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                      self.inputs.save_dir,
-                                                                      df_output[f"H{t_c}_uncertainty"].tolist(),
-                                                                      dl_test.df["RDMol"].tolist())
+                unc = df_pred["H298_residual_uncertainty"].to_numpy()
+
+            nasa_coefficients = get_nasa_coefficients(temperatures, h298=h298, s298=s298, cp_values=cp)
+            a1, a2, a3, a4, a5, a6, a7 = nasa_coefficients.T
+            h = enthalpy_fit(t, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
+            df_output = df_pred[["smiles"]].copy()
+            df_output[f"H{t_c}_prediction"] = h
+            df_output[f"H{t_c}_uncertainty"] = unc
+            if quality_check:
+                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                  self.inputs.save_dir,
+                                                                  unc,
+                                                                  dl_test.df["RDMol"].tolist())
+
+        return df_output
+
+    def predict_entropy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
+                        t: float = 298.15, quality_check: bool = False):
+        df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, None, t,
+                                                      self.models, self.scaler, self.inputs, "s")
+
+        if t == 298.15:
+            df_output = df_pred[["smiles", "S298_prediction", "S298_uncertainty"]].copy()
+            if quality_check:
+                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                  self.inputs.save_dir,
+                                                                  df_output[f"S298_uncertainty"].tolist(),
+                                                                  dl_test.df["RDMol"].tolist())
+
+        else:
+            temperatures, cp_keys = get_heat_capacity_values(self.inputs)
+            s298 = df_pred["S298_prediction"].to_numpy()
+
+            a1, a2, a3, a4, a5 = get_cp_coefficients(temperatures, df_pred[cp_keys].to_numpy() * (4.184 / 8.314))
+            a7 = s298 * (4.184 / 8.314) - entropy_fit(298.15, a1, a2, a3, a4, a5, 0)
+            s = entropy_fit(t, a1, a2, a3, a4, a5, a7) * 8.314 / 4.184
+
+            df_output = df_pred[["smiles"]].copy()
+            t_c = int(t)
+            df_output[f"S{t_c}_prediction"] = s
+            df_output[f"S{t_c}_uncertainty"] = df_pred["S298_uncertainty"].to_numpy()
+            if quality_check:
+                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                  self.inputs.save_dir,
+                                                                  df_output[f"S{t_c}_uncertainty"].tolist(),
+                                                                  dl_test.df["RDMol"].tolist())
+
+        return df_output
+
+    def predict_gibbs(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
+                      llot: Union[float, list, None] = None, t: float = 298.15,
+                      quality_check: bool = False) -> pd.DataFrame:
+        df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, llot, t,
+                                                      self.models, self.scaler, self.inputs, "g")
+        t_c = int(t)
+        df_enthalpy = self.predict_enthalpy(smiles, xyz, llot, t, quality_check)
+        df_entropy = self.predict_entropy(smiles, xyz, t, quality_check)
+
+        df_gibbs = df_enthalpy.copy()
+        df_gibbs[f"S{t_c}_prediction"] = df_entropy[f"S{t_c}_prediction"].to_numpy()
+        df_gibbs[f"S{t_c}_uncertainty"] = df_entropy[f"S{t_c}_uncertainty"].to_numpy()
+        h = df_gibbs[f"H{t_c}_prediction"].to_numpy()
+        s = df_gibbs[f"S{t_c}_prediction"].to_numpy()
+        df_gibbs[f"G{t_c}_prediction"] = h - t * 0.001 * s
+
+        if quality_check:
+            df_gibbs[f"H{t_c}_reliability"] = df_enthalpy["reliability"].tolist()
+            df_gibbs[f"S{t_c}_reliability"] = df_entropy["reliability"].tolist()
+
+            df_output = df_gibbs[["smiles", f"G{t_c}_prediction",
+                                  f"H{t_c}_prediction", f"S{t_c}_prediction",
+                                  f"H{t_c}_uncertainty", f"S{t_c}_uncertainty",
+                                  f"H{t_c}_reliability", f"S{t_c}_reliability"]]
+        else:
+            df_output = df_gibbs[["smiles", f"G{t_c}_prediction",
+                                  f"H{t_c}_prediction", f"S{t_c}_prediction",
+                                  f"H{t_c}_uncertainty", f"S{t_c}_uncertainty"]]
 
         return df_output
 
@@ -155,34 +185,10 @@ class Thermo:
         :param chemkin: Whether to return a Chemkin thermo file
         """
 
-        if self.dimension == "3d" and xyz is None:
-            raise ValueError("Parameter xyz cannot be None! "
-                             "You have to provide 3D coordinates to make predictions with a 3D model.")
-
-        elif self.dimension == "3d" and llot is None:
-            raise ValueError("Please provide low level-of-theory Dh298 estimate "
-                             "to calculate enthalpies of formation at temperatures other than 298.15 K.")
-
-        if type(smiles) is str:
-            df_out = read_csv(self.inputs, smiles=[smiles], xyz_list=xyz)
-        elif type(smiles) is list:
-            df_out = read_csv(self.inputs, smiles=smiles, xyz_list=xyz)
-        else:
-            raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
-
-        dl_test = DataLoader(input_pars=self.inputs, transfer=False, test=True, df=df_out)
-        dl_test.scaler = self.scaler
-        df_pred = test_external_dataset(self.models, self.scaler, self.inputs, dl_test, return_results=True)
+        df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, llot, 300,
+                                                      self.models, self.scaler, self.inputs, "h")
         mols = dl_test.df["RDMol"].tolist()
-
-        temperatures = np.array([298.15, 303.15, 313.15, 323.15, 333.15, 343.15, 353.15,
-                                 363.15, 373.15, 383.15, 393.15, 403.15, 413.15, 423.15,
-                                 448.15, 473.15, 498.15, 523.15, 548.15, 573.15, 598.15,
-                                 623.15, 648.15, 673.15, 698.15, 723.15, 748.15, 773.15,
-                                 798.15, 823.15, 848.15, 873.15, 923.15, 973.15, 1023.15,
-                                 1073.15, 1123.15, 1173.15, 1223.15, 1273.15, 1323.15, 1373.15,
-                                 1423.15, 1473.15, 1523.15])
-        cp_keys = [f"{key}_prediction" for key in self.inputs.property[2:]]
+        temperatures, cp_keys = get_heat_capacity_values(self.inputs)
 
         if self.dimension == "2d":
             nasa_coefficients = get_nasa_coefficients(temperatures, h298=df_pred["H298_prediction"].to_numpy(),
@@ -214,14 +220,14 @@ class Liquid:
     """:class:`Liquid` contains trained models to predict liquid-phase thermodynamic properties.
     Currently available: Boiling point (bp), critical temperature (tc), critical pressure (pc),
     critical volume (vc), octanol-water partitioning (logp), aqueous solubility (logs)."""
-    def __init__(self, property: str, dimension: str):
+    def __init__(self, prop: str, dimension: str):
         """
-        :param property: A string with the property to predict
+        :param prop: A string with the property to predict
         (currently supported: `bp`, `tc`, `pc`, `vp`, `logp`, `logs`)
         :param dimension: A string with the dimension of chemical information (`2d` or `3d`)
         """
 
-        self.property = property
+        self.property = prop
         self.dimension = dimension
         self.inputs = TestInputArguments(dimension=self.dimension)
         self.inputs.property = [self.property]
@@ -251,3 +257,39 @@ class Liquid:
         dl_test.scaler = self.scaler
         df_pred = test_external_dataset(self.models, self.scaler, self.inputs, dl_test, return_results=True)
         return df_pred
+
+
+def control_thermo_input(smiles, dim, xyz, llot, t, models, scaler, inputs, prop):
+    if dim == "3d" and xyz is None:
+        raise ValueError("Parameter xyz cannot be None! "
+                         "You have to provide 3D coordinates to make predictions with a 3D model.")
+
+    elif dim == "3d" and t != 298.15 and llot is None and prop in ["h", "g"]:
+        raise ValueError("Please provide low level-of-theory Dh298 estimate "
+                         "to calculate enthalpies of formation at temperatures other than 298.15 K.")
+
+    if type(smiles) is str:
+        df_out = read_csv(inputs, smiles=[smiles], xyz_list=[xyz])
+        llot = [llot]
+    elif type(smiles) is list:
+        df_out = read_csv(inputs, smiles=smiles, xyz_list=xyz)
+    else:
+        raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
+
+    dl_test = DataLoader(input_pars=inputs, transfer=False, test=True, df=df_out)
+    dl_test.scaler = scaler
+    df_pred = test_external_dataset(models, scaler, inputs, dl_test, return_results=True)
+
+    return df_pred, dl_test, llot
+
+
+def get_heat_capacity_values(inputs):
+    temperatures = np.array([298.15, 303.15, 313.15, 323.15, 333.15, 343.15, 353.15,
+                             363.15, 373.15, 383.15, 393.15, 403.15, 413.15, 423.15,
+                             448.15, 473.15, 498.15, 523.15, 548.15, 573.15, 598.15,
+                             623.15, 648.15, 673.15, 698.15, 723.15, 748.15, 773.15,
+                             798.15, 823.15, 848.15, 873.15, 923.15, 973.15, 1023.15,
+                             1073.15, 1123.15, 1173.15, 1223.15, 1273.15, 1323.15, 1373.15,
+                             1423.15, 1473.15, 1523.15])
+    cp_keys = [f"{key}_prediction" for key in inputs.property[2:]]
+    return temperatures, cp_keys
