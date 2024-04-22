@@ -246,13 +246,25 @@ class Liquid:
             raise ValueError("Parameter xyz cannot be None! "
                              "You have to provide 3D coordinates to make predictions with a 3D model.")
 
-        if type(smiles) is str:
-            df_out = read_csv(self.inputs, smiles=[smiles], xyz_list=xyz)
-        elif type(smiles) is list:
-            df_out = read_csv(self.inputs, smiles=smiles, xyz_list=xyz)
-        else:
-            raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
+        df_out = check_input(smiles, xyz, self.inputs)
 
+        dl_test = DataLoader(input_pars=self.inputs, transfer=False, test=True, df=df_out)
+        dl_test.scaler = self.scaler
+        df_pred = test_external_dataset(self.models, self.scaler, self.inputs, dl_test, return_results=True)
+        return df_pred
+
+
+class Safety:
+    def __init__(self):
+        self.property = ["AIT", "FLTL", "FLTU", "FP", "NBP", "SOLP", "MP"]
+        self.dimension = "2d"
+        self.inputs = TestInputArguments(dimension=self.dimension)
+        self.inputs.property = self.property
+        self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/safety/2d"
+        self.models, self.scaler = load_models(self.inputs)
+
+    def predict(self, smiles: Union[str, list]) -> pd.DataFrame:
+        df_out = check_input(smiles, None, self.inputs)
         dl_test = DataLoader(input_pars=self.inputs, transfer=False, test=True, df=df_out)
         dl_test.scaler = self.scaler
         df_pred = test_external_dataset(self.models, self.scaler, self.inputs, dl_test, return_results=True)
@@ -293,3 +305,14 @@ def get_heat_capacity_values(inputs):
                              1423.15, 1473.15, 1523.15])
     cp_keys = [f"{key}_prediction" for key in inputs.property[2:]]
     return temperatures, cp_keys
+
+
+def check_input(smiles, xyz, inputs):
+    if type(smiles) is str:
+        df_out = read_csv(inputs, smiles=[smiles], xyz_list=xyz)
+    elif type(smiles) is list:
+        df_out = read_csv(inputs, smiles=smiles, xyz_list=xyz)
+    else:
+        raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
+
+    return df_out
