@@ -40,13 +40,15 @@ class Thermo:
         self.models, self.scaler = load_models(self.inputs)
 
     def predict(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
-                llot: Union[float, list, None] = None, t: float = 298.15) -> pd.DataFrame:
+                llot: Union[float, list, None] = None, t: float = 298.15,
+                quality_check: bool = False) -> pd.DataFrame:
         """
         This function predicts the thermochemical property for the corresponding SMILES.
         :param xyz: Either a string of the xyz coordinates or a list of xyz coordinate strings.
         :param smiles: Either a SMILES string or a list of SMILES strings.
         :param llot: Low level-of-theory enthalpy of formation estimate
         :param t: Temperature at which the enthalpy of formation is estimated (in Kelvin)
+        :param quality_check: Add a reliability score (default is False)
         :return: Predictions are returned as a Pandas DataFrame
         """
 
@@ -73,25 +75,28 @@ class Thermo:
         if t == 298.15:
             if self.dimension == "2d":
                 df_output = df_pred[["smiles", "H298_prediction", "H298_uncertainty"]].copy()
-                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                  self.inputs.save_dir,
-                                                                  df_output[f"H298_uncertainty"].tolist(),
-                                                                  dl_test.df["RDMol"].tolist())
+                if quality_check:
+                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                      self.inputs.save_dir,
+                                                                      df_output[f"H298_uncertainty"].tolist(),
+                                                                      dl_test.df["RDMol"].tolist())
             elif llot is None:
                 print(f"WARNING! Returning the residual between {self.method} and B3LYP in kcal/mol!")
                 df_output = df_pred[["smiles", "H298_residual_prediction", "H298_residual_uncertainty"]].copy()
-                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                  self.inputs.save_dir,
-                                                                  df_output[f"H298_residual_uncertainty"].tolist(),
-                                                                  dl_test.df["RDMol"].tolist())
+                if quality_check:
+                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                      self.inputs.save_dir,
+                                                                      df_output[f"H298_residual_uncertainty"].tolist(),
+                                                                      dl_test.df["RDMol"].tolist())
             else:
                 df_pred["H298_prediction"] = df_pred["H298_residual_prediction"].to_numpy() + llot
                 df_pred["H298_uncertainty"] = df_pred["H298_residual_uncertainty"].to_numpy()
                 df_output = df_pred[["smiles", "H298_prediction", "H298_uncertainty"]].copy()
-                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                  self.inputs.save_dir,
-                                                                  df_output[f"H298_uncertainty"].tolist(),
-                                                                  dl_test.df["RDMol"].tolist())
+                if quality_check:
+                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                      self.inputs.save_dir,
+                                                                      df_output[f"H298_uncertainty"].tolist(),
+                                                                      dl_test.df["RDMol"].tolist())
 
         else:
             temperatures = np.array([298.15, 303.15, 313.15, 323.15, 333.15, 343.15, 353.15,
@@ -110,13 +115,14 @@ class Thermo:
                 a1, a2, a3, a4, a5, a6, a7 = nasa_coefficients.T
                 h = enthalpy_fit(298.15, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
                 df_output = df_pred[["smiles"]].copy()
-                t_c = int(t - 273.15)
+                t_c = int(t)
                 df_output[f"H{t_c}_prediction"] = h
                 df_output[f"H{t_c}_uncertainty"] = df_pred["H298_uncertainty"].to_numpy()
-                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                  self.inputs.save_dir,
-                                                                  df_output[f"H{t_c}_uncertainty"].tolist(),
-                                                                  dl_test.df["RDMol"].tolist())
+                if quality_check:
+                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                      self.inputs.save_dir,
+                                                                      df_output[f"H{t_c}_uncertainty"].tolist(),
+                                                                      dl_test.df["RDMol"].tolist())
 
             else:
                 h298 = df_pred["H298_residual_prediction"].to_numpy() + llot
@@ -129,10 +135,11 @@ class Thermo:
                 t_c = int(t)
                 df_output[f"H{t_c}_prediction"] = h
                 df_output[f"H{t_c}_uncertainty"] = df_pred["H298_residual_uncertainty"].to_numpy()
-                df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
-                                                                  self.inputs.save_dir,
-                                                                  df_output[f"H{t_c}_uncertainty"].tolist(),
-                                                                  dl_test.df["RDMol"].tolist())
+                if quality_check:
+                    df_output[f"reliability"] = add_reliability_score(df_output["smiles"].tolist(),
+                                                                      self.inputs.save_dir,
+                                                                      df_output[f"H{t_c}_uncertainty"].tolist(),
+                                                                      dl_test.df["RDMol"].tolist())
 
         return df_output
 
