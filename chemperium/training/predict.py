@@ -10,7 +10,7 @@ import numpy as np
 
 class Thermo:
     """:class:`Thermo` contains trained models to predict the enthalpy of formation at 298 K."""
-    def __init__(self, method: str, dimension: str):
+    def __init__(self, method: str, dimension: str, data_location: Union[str, None] = None):
         """
         :param method: A string with the quantum chemical method (currently supported: `g3mp2b3` and `cbs-qb3`)
         :param dimension: A string with the dimension of chemical information (`2d` or `3d`)
@@ -36,7 +36,10 @@ class Thermo:
             self.inputs.property[0] = 'H298'
 
         self.method = method
-        self.inputs.save_dir = self.inputs.dir + f"/caesar-data/thermo/{self.method}/{self.dimension}"
+        if data_location is None:
+            self.inputs.save_dir = self.inputs.dir + f"/caesar-data/thermo/{self.method}/{self.dimension}"
+        else:
+            self.inputs.save_dir = data_location + f"/caesar-data/thermo/{self.method}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict_enthalpy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
@@ -220,7 +223,7 @@ class Liquid:
     """:class:`Liquid` contains trained models to predict liquid-phase thermodynamic properties.
     Currently available: Boiling point (bp), critical temperature (tc), critical pressure (pc),
     critical volume (vc), octanol-water partitioning (logp), aqueous solubility (logs)."""
-    def __init__(self, prop: str, dimension: str):
+    def __init__(self, prop: str, dimension: str, data_location: Union[str, None] = None):
         """
         :param prop: A string with the property to predict
         (currently supported: `bp`, `tc`, `pc`, `vp`, `logp`, `logs`)
@@ -231,7 +234,10 @@ class Liquid:
         self.dimension = dimension
         self.inputs = TestInputArguments(dimension=self.dimension)
         self.inputs.property = [self.property]
-        self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/{self.property}/{self.dimension}"
+        if data_location is None:
+            self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/{self.property}/{self.dimension}"
+        else:
+            self.inputs.save_dir = data_location + f"/caesar-data/liquid/{self.property}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict(self, smiles: Union[str, list], xyz: Union[str, list, None] = None) -> pd.DataFrame:
@@ -255,12 +261,15 @@ class Liquid:
 
 
 class Safety:
-    def __init__(self):
+    def __init__(self, data_location: Union[str, None] = None):
         self.property = ["AIT", "FLTL", "FLTU", "FP", "NBP", "SOLP", "MP"]
         self.dimension = "2d"
         self.inputs = TestInputArguments(dimension=self.dimension)
         self.inputs.property = self.property
-        self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/safety/2d"
+        if data_location is None:
+            self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/safety/2d"
+        else:
+            self.inputs.save_dir = data_location + f"/caesar-data/liquid/safety/2d"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict(self, smiles: Union[str, list]) -> pd.DataFrame:

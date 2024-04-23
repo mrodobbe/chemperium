@@ -7,7 +7,7 @@ from tensorflow.keras.models import Model
 
 
 class Representation:
-    def __init__(self):
+    def __init__(self, data_location: Union[str, None] = None):
 
         self.inputs = TestInputArguments("2d")
 
@@ -30,7 +30,10 @@ class Representation:
                                 'logP(Octanol-wet-Water)', 'logP(OleylAlcohol-Water)']
 
         self.inputs.ensemble = False
-        self.inputs.save_dir = self.inputs.dir + f"/caesar-data/cosmo/2d"
+        if data_location is None:
+            self.inputs.save_dir = self.inputs.dir + f"/caesar-data/cosmo/2d"
+        else:
+            self.inputs.save_dir = data_location + f"/caesar-data/cosmo/2d"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict(self, smiles: Union[str, list]):
