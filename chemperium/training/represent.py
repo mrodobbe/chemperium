@@ -48,6 +48,10 @@ class Representation:
         dl_test.scaler = self.scaler
 
         layer_name = 'readout'
+        for layer in self.models[0].layers:
+            if "readout" in layer.name:
+                layer_name = layer.name
+
         intermediate_layer_model = Model(inputs=self.models[0].input,
                                          outputs=self.models[0].get_layer(layer_name).output)
 
