@@ -260,7 +260,6 @@ def MPNN(d_atoms, d_bonds, d_out,
          xyz]
         )
 
-
     x = Readout(representation_size)([bonds_t, atom_features, atom_bond_neighbors])
     if mfd:
         mx = Dense(mfd_size)(molecular_features)

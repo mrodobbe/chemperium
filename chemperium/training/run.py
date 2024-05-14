@@ -37,7 +37,7 @@ def run_model(x, y, train_indices, validation_indices, inp, model=None):
             decay_rate=inp.decay_rate,
             staircase=True)
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipvalue=inp.clipvalue)
-        # optimizer = keras.optimizers.Adam(learning_rate=1e-3)
+
         mpnn.compile(loss='mean_squared_error', optimizer=optimizer,
                      metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
     else:
