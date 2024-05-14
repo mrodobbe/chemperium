@@ -1,13 +1,18 @@
 import pandas as pd
-from src.chemperium.features.calc_features import periodic_table
-from src.chemperium.data.parse_csv import df_from_csv
-from src.chemperium.data.load_test_data import TestInputArguments
+from chemperium.features.calc_features import periodic_table
+from chemperium.data.parse_csv import df_from_csv
+from chemperium.data.load_test_data import TestInputArguments
+from chemperium.inp import InputArguments
+from chemperium.molecule.graph import Mol3DGraph
+from chemperium.molecule.batch import featurize_graphs
+from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Geometry import Point3D
 from sklearn.preprocessing import MinMaxScaler
 from typing import Union
 import os
 import pickle
+import numpy as np
 
 
 class DataLoader:
@@ -153,7 +158,6 @@ class DataLoader:
                 graph = Mol3DGraph(self.rdmol_list[i], self.smiles[i], self.df["xyz"][idx[i]], self.inp)
                 try:
                     mgs[i] = graph
-                    hb = mgs[i].num_hbonds
                 except AttributeError as e:
                     print(e)
                     mgs = np.delete(mgs, i)

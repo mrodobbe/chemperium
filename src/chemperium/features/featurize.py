@@ -1,6 +1,7 @@
-from src.chemperium.inp import InputArguments
+from chemperium.inp import InputArguments
 from rdkit.Chem import Descriptors, rdmolops
 from rdkit.Chem.rdchem import Mol
+from chemperium.features.calc_features import *
 
 
 def get_atomic_features(atom: Chem.Atom, mol: Chem.Mol, hbond_dict: dict, xyz, input_pars: InputArguments):

@@ -1,6 +1,6 @@
-from src.chemperium.data.load_test_data import load_models, TestInputArguments, read_csv
-from src.chemperium.data.load_data import DataLoader
-from src.chemperium.molecule.batch import prepare_batch
+from chemperium.data.load_test_data import load_models, TestInputArguments, read_csv
+from chemperium.data.load_data import DataLoader
+from chemperium.molecule.batch import prepare_batch
 from typing import Union
 import numpy as np
 from tensorflow.keras.models import Model

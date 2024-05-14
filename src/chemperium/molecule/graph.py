@@ -1,8 +1,10 @@
 import tensorflow as tf
-from src.chemperium.features.find_h_bonds import find_h_bonds
+from chemperium.features.find_h_bonds import find_h_bonds
+from chemperium.features.featurize import *
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 from rdkit.Chem.rdchem import Mol
+import numpy as np
 
 
 class Mol3DGraph:

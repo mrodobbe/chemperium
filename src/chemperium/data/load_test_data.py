@@ -3,14 +3,14 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Geometry import Point3D
 import numpy as np
-from src.chemperium.features.calc_features import periodic_table
-from src.chemperium.inp import InputArguments
+from chemperium.features.calc_features import periodic_table
+from chemperium.inp import InputArguments
 from tensorflow.keras.models import load_model
 import os
 import os.path as path
 import pickle
 from typing import Union
-from src.chemperium.model.mpnn import MessagePassing, Readout, DirectedEdgeMessage, BondInputFeatures
+from chemperium.model.mpnn import MessagePassing, Readout, DirectedEdgeMessage, BondInputFeatures
 
 
 class TestInputArguments:

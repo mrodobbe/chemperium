@@ -3,7 +3,7 @@ from rdkit.Chem import rdDetermineBonds, AllChem
 from rdkit.Geometry import Point3D
 import pandas as pd
 import numpy as np
-from src.chemperium.features.calc_features import periodic_table
+from chemperium.features.calc_features import periodic_table
 
 
 def make_3d_mol(xyz: str):

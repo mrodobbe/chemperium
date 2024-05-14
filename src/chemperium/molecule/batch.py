@@ -1,3 +1,6 @@
+import tensorflow as tf
+
+
 def featurize_graphs(mol_graphs):
     all_atom_features = []
     all_bond_features = []

@@ -1,7 +1,9 @@
-from src.chemperium.data.load_data import *
+from chemperium.data.load_data import *
+from chemperium.model.mpnn import MPNN
+from chemperium.molecule.batch import MPNNDataset
 from sklearn.model_selection import KFold
 from tensorflow.keras.callbacks import EarlyStopping
-from src.chemperium.training.evaluate import *
+from chemperium.training.evaluate import *
 import gc
 
 

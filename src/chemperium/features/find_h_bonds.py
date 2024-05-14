@@ -5,7 +5,7 @@ from rdkit import Chem
 from rdkit.Chem import rdPartialCharges, AllChem
 from rdkit.Chem import rdMolTransforms
 from rdkit.Geometry.rdGeometry import Point3D
-from src.chemperium.features.calc_features import periodic_table
+from chemperium.features.calc_features import periodic_table
 import numpy as np
 sys.path.insert(0, os.path.split(__file__)[0])
 
