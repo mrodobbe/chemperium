@@ -1,6 +1,5 @@
 import tensorflow as tf
-from chemperium.features.featurize import *
-from chemperium.features.find_h_bonds import find_h_bonds
+from src.chemperium.features.find_h_bonds import find_h_bonds
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 from rdkit.Chem.rdchem import Mol

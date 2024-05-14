@@ -1,7 +1,7 @@
-from chemperium.data.load_data import *
+from src.chemperium.data.load_data import *
 from sklearn.model_selection import KFold
 from tensorflow.keras.callbacks import EarlyStopping
-from chemperium.training.evaluate import *
+from src.chemperium.training.evaluate import *
 import gc
 
 

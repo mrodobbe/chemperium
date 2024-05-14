@@ -2,10 +2,9 @@ from sklearn.metrics import r2_score
 import warnings
 import numpy as np
 import pandas as pd
-from chemperium.data.load_data import DataLoader
-from chemperium.molecule.batch import prepare_batch
-from chemperium.inp import InputArguments
-from chemperium.model.mpnn import *
+from src.chemperium.data.load_data import DataLoader
+from src.chemperium.molecule.batch import prepare_batch
+from src.chemperium.inp import InputArguments
 import pickle
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')

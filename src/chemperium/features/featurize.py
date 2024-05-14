@@ -1,5 +1,4 @@
-from chemperium.inp import InputArguments
-from chemperium.features.calc_features import *
+from src.chemperium.inp import InputArguments
 from rdkit.Chem import Descriptors, rdmolops
 from rdkit.Chem.rdchem import Mol
 

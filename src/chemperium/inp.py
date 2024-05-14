@@ -66,7 +66,7 @@ class InputArguments:
         self.test = args.test
         self.locked_transfer = True
         self.store_models = args.store_models
-        self.dir = path.abspath(path.join("__file__", "../.."))
+        self.dir = path.abspath(path.join("__file__", "../../.."))
 
         if training_type == "train":
             self.input_file = args.data

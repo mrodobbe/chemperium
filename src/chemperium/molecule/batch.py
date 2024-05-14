@@ -1,6 +1,3 @@
-from chemperium.molecule.graph import *
-
-
 def featurize_graphs(mol_graphs):
     all_atom_features = []
     all_bond_features = []

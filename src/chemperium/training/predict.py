@@ -1,8 +1,7 @@
-from chemperium.data.load_data import DataLoader
-from chemperium.data.load_test_data import read_csv, load_models, TestInputArguments
-from chemperium.training.run import test_external_dataset
-from chemperium.postprocessing.thermodynamics import *
-from chemperium.postprocessing.uncertainty_quantification import add_reliability_score
+from src.chemperium.data.load_data import DataLoader
+from src.chemperium.data.load_test_data import read_csv, load_models, TestInputArguments
+from src.chemperium.training.run import test_external_dataset
+from src.chemperium.postprocessing.uncertainty_quantification import add_reliability_score
 from typing import Union
 import pandas as pd
 import numpy as np
