@@ -51,7 +51,7 @@ def get_cp_coefficients(temperatures: Union[float, npt.NDArray[np.float64]],
     return coefficients_array
 
 
-def get_nasa_coefficients(temperatures: float,
+def get_nasa_coefficients(temperatures: Union[npt.NDArray[np.float64], float],
                           h298: Union[npt.NDArray[np.float64]],
                           s298: Union[npt.NDArray[np.float64]],
                           cp_values: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
