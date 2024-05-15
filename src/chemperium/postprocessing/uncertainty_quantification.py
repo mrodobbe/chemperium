@@ -2,9 +2,13 @@ import json
 from rdkit.Chem.rdchem import Mol
 from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol
 from rdkit import Chem
+from typing import List
 
 
-def add_reliability_score(smiles: list, dataset: str, uncertainty: list, molecules: list):
+def add_reliability_score(smiles: List[str],
+                          dataset: str,
+                          uncertainty: List[float],
+                          molecules: List[Mol]) -> List[str]:
     with open(f"{dataset}/fact_sheet.json") as json_file:
         fact_sheet = json.load(json_file)
 
