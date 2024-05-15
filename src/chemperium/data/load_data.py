@@ -46,7 +46,7 @@ class DataLoader:
             self.df = df
         self.rdmol_list = np.array(self.get_rdmol())
         self.smiles = self.get_smiles()
-        self.graphs = np.array(self.get_graphs())
+        self.graphs = self.get_graphs()
         self.scaler = self.get_scaler()
         self.x = self.get_xs()
         self.y = self.get_outputs(inputs=self.inp)
@@ -218,7 +218,7 @@ class DataLoader:
         :return: NumPy array with all properties
         """
         if self.test:
-            return np.ones(self.graphs.shape[0])
+            return np.ones(np.array(self.graphs).shape[0])
         if inputs is not None:
             self.inp = inputs
         if self.inp.save_dl:

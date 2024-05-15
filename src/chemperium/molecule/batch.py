@@ -1,7 +1,18 @@
 import tensorflow as tf
+from typing import List, Tuple, Union
+from chemperium.molecule.graph import Mol3DGraph
+import numpy as np
+import numpy.typing as npt
 
 
-def featurize_graphs(mol_graphs):
+def featurize_graphs(mol_graphs: List[Mol3DGraph]) -> Tuple[tf.RaggedTensor, tf.RaggedTensor,
+                                                            tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                                                            tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor]:
+    """
+
+    :param mol_graphs: List containing
+    :return: tuple of tf.RaggedTensor instances
+    """
     all_atom_features = []
     all_bond_features = []
     all_bond_pairs = []
@@ -35,7 +46,16 @@ def featurize_graphs(mol_graphs):
             all_mol_features)
 
 
-def prepare_batch(x_batch, y_batch):
+def prepare_batch(x_batch: Tuple[tf.RaggedTensor, tf.RaggedTensor,
+                                 tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                                 tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor],
+                  y_batch: Union[List[float],
+                                 npt.NDArray[np.float64], None]) -> Tuple[Tuple[tf.Tensor, tf.Tensor,
+                                                                          tf.Tensor, tf.Tensor, tf.Tensor,
+                                                                          tf.Tensor, tf.Tensor, tf.Tensor],
+                                                                          Union[List[float],
+                                                                                npt.NDArray[np.float64], None]]:
+
     all_atom_features, all_bond_features, all_bond_pairs, xyz, all_bond_neighbors, \
         all_atom_neighbors, all_atom_bond_neighbors, all_mol_features = x_batch
 
@@ -56,7 +76,13 @@ def prepare_batch(x_batch, y_batch):
             all_bond_neighbors, all_atom_neighbors, all_atom_bond_neighbors, all_mol_features), y_batch
 
 
-def MPNNDataset(x, y, batch_size=32, shuffle=False, seed=210995):
+def MPNNDataset(x: Tuple[tf.Tensor, tf.Tensor,
+                         tf.Tensor, tf.Tensor, tf.Tensor,
+                         tf.Tensor, tf.Tensor, tf.Tensor],
+                y: Union[List[float], npt.NDArray[np.float64], None],
+                batch_size: int = 32,
+                shuffle: bool = False,
+                seed: int = 210995) -> tf.data.Dataset:
     dataset = tf.data.Dataset.from_tensor_slices((x, (y)))
     if shuffle:
         dataset = dataset.shuffle(1024, seed=seed)
