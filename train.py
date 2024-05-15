@@ -1,6 +1,6 @@
-from src.chemperium import InputArguments
-from src.chemperium import DataLoader, input_checker
-from src.chemperium.training.run import run_training, run_transfer
+from chemperium.inp import InputArguments
+from chemperium.data.load_data import DataLoader, input_checker
+from chemperium.training.run import run_training, run_transfer
 
 if __name__ == "__main__":
 
