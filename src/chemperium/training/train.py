@@ -9,7 +9,7 @@ def train(input_file: str,
           save_dir: str,
           input_args: Union[None, Dict[str, Any]] = None) -> None:
     """
-
+    Train custom message-passing neural networks
     :param input_file: string with the location of the csv file with input data
     :param prop: comma-separated string or list of strings with target property/ies.
     :param save_dir: folder to store data
