@@ -3,7 +3,7 @@ import os.path as path
 
 
 class ArgParser:
-    def __init__(self):
+    def __init__(self) -> None:
         self.parser = argparse.ArgumentParser(description="Train the 3D MPNN")
         self.parser.add_argument("--save_dir", type=str, help="Folder to store results")
         self.parser.add_argument("--property", type=str, help="Target property/ies")
@@ -56,7 +56,7 @@ class ArgParser:
 
 
 class InputArguments:
-    def __init__(self, training_type="train"):
+    def __init__(self, training_type: str = "train"):
         # Data processing
         args = ArgParser().parser.parse_args()
         self.save_dl = args.save_dl
