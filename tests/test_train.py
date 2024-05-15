@@ -13,5 +13,5 @@ def run_training():
                        "folds": 1,
                        "num_layers": 2}
 
-    cp.train(example_file, prop, save_dir, input_arguments)
+    cp.training.train.train(example_file, prop, save_dir, input_arguments)
     print("Training test finished successfully!")
