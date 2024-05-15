@@ -42,6 +42,16 @@ source = "https://github.com/mrodobbe/chemperium"
 tracker = "https://github.com/mrodobbe/chemperium/issues"
 # documentation = "https://chemperium.readthedocs.io"
 
+[project.optional-dependencies]
+test = [
+    "mypy",
+    "hypothesis",
+    "pytest",
+    "pytest-cov",
+    "tox",
+    "genbadge[coverage]",
+]
+
 [tool.hatch.version]
 path = "src/chemperium/__about__.py"
 
@@ -97,10 +107,10 @@ disable_error_code = ["assignment", "import-untyped", "no-any-return"]
 # module = "thirdparty.*"
 # ignore_missing_imports = true
 
-#[tool.pytest.ini_options]
-#testpaths = [
-#    "tests",
-#]
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
 
 [tool.coverage.run]
 omit = [
