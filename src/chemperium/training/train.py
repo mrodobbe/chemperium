@@ -1,14 +1,28 @@
-from typing import Union
+from typing import Union, List, Dict, Any
 from chemperium.inp import InputArguments
 from chemperium.data.load_data import DataLoader, input_checker
 from chemperium.training.run import run_training, run_transfer
 
 
-def train(input_file: str, prop: Union[str, list], save_dir: str, input_args: dict = None):
+def train(input_file: str,
+          prop: Union[str, List[str]],
+          save_dir: str,
+          input_args: Union[None, Dict[str, Any]] = None) -> None:
+    """
+
+    :param input_file: string with the location of the csv file with input data
+    :param prop: comma-separated string or list of strings with target property/ies.
+    :param save_dir: folder to store data
+    :param input_args: dictionary with input arguments. See inp.py for complete overview
+    :return:
+    """
+
     inputs = InputArguments()
     setattr(inputs, "input_file", input_file)
-    for key, value in input_args.items():
-        setattr(inputs, key, value)
+
+    if input_args is not None:
+        for key, value in input_args.items():
+            setattr(inputs, key, value)
 
     if type(prop) is str:
         prop = prop.split(",")
