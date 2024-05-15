@@ -1,17 +1,24 @@
+from typing import Union, List
 from sklearn.metrics import r2_score
 import warnings
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from chemperium.data.load_data import DataLoader
 from chemperium.molecule.batch import prepare_batch
 from chemperium.inp import InputArguments
+from chemperium.data.load_test_data import TestInputArguments
 import pickle
 import tensorflow as tf
+from keras.models import Model
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
 
 
-def evaluate_training_model(model: tf.keras.Model, dl: DataLoader, test_indices, inp: InputArguments):
+def evaluate_training_model(model: Model,
+                            dl: DataLoader,
+                            test_indices: npt.NDArray[np.int64],
+                            inp: Union[InputArguments, TestInputArguments]) -> pd.DataFrame:
     x_test = tuple(tf.gather(tup, test_indices) for tup in dl.x)
     y_test = dl.y[test_indices]
     x_test, y_test = prepare_batch(x_test, y_test)
@@ -61,7 +68,10 @@ def evaluate_training_model(model: tf.keras.Model, dl: DataLoader, test_indices,
     return df_pred
 
 
-def evaluate_ensemble(models: list, dl: DataLoader, test_indices, inp: InputArguments):
+def evaluate_ensemble(models: List[Model],
+                      dl: DataLoader,
+                      test_indices: npt.NDArray[np.int64],
+                      inp: Union[InputArguments, TestInputArguments]) -> pd.DataFrame:
     x_test = tuple(tf.gather(tup, test_indices) for tup in dl.x)
     y_test = dl.y[test_indices]
     x_test, y_test = prepare_batch(x_test, y_test)
@@ -121,7 +131,9 @@ def evaluate_ensemble(models: list, dl: DataLoader, test_indices, inp: InputArgu
     return df_pred
 
 
-def external_ensemble_test(models: list, dl: DataLoader, inp: InputArguments):
+def external_ensemble_test(models: List[Model],
+                           dl: DataLoader,
+                           inp: Union[InputArguments, TestInputArguments]) -> pd.DataFrame:
     x_test = dl.x
     smiles = dl.smiles
     rdmol = dl.rdmol_list
@@ -181,7 +193,9 @@ def external_ensemble_test(models: list, dl: DataLoader, inp: InputArguments):
     return df_pred
 
 
-def external_model_test(model: tf.keras.Model, dl: DataLoader, inp: InputArguments):
+def external_model_test(model: Model,
+                        dl: DataLoader,
+                        inp: Union[InputArguments, TestInputArguments]) -> pd.DataFrame:
     x_test = dl.x
     smiles = dl.smiles
     rdmol = dl.rdmol_list
