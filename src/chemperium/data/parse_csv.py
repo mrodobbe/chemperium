@@ -1,12 +1,13 @@
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds, AllChem
+from rdkit.Chem.rdchem import Mol
 from rdkit.Geometry import Point3D
 import pandas as pd
 import numpy as np
 from chemperium.features.calc_features import periodic_table
 
 
-def make_3d_mol(xyz: str):
+def make_3d_mol(xyz: str) -> Mol:
     pt = periodic_table()
     inv_pt = {v: k for k, v in pt.items()}
     try:
@@ -17,18 +18,19 @@ def make_3d_mol(xyz: str):
             g = [x for x in j if x]
             cleans.append(g)
         coords = [x[1:] for x in cleans]
-        coords = np.asarray(coords).astype(np.float64)
+        coords_array = np.asarray(coords).astype(np.float64)
+        assert coords_array.shape[1] == 3
         ats = [x[0] for x in cleans]
         m = Chem.MolFromXYZBlock(xyz)
         rdDetermineBonds.DetermineConnectivity(m)
         m1 = Chem.AddHs(m)
         AllChem.EmbedMolecule(m1)
         c1 = m1.GetConformer()
-        for j in range(m1.GetNumAtoms()):
-            x, y, z = coords[j]
-            c1.SetAtomPosition(j, Point3D(x, y, z))
-            atom = m1.GetAtomWithIdx(j)
-            an = inv_pt.get(ats[j])
+        for k in range(m1.GetNumAtoms()):
+            x, y, z = coords_array[k]
+            c1.SetAtomPosition(k, Point3D(x, y, z))
+            atom = m1.GetAtomWithIdx(k)
+            an = inv_pt.get(ats[k])
             atom.SetAtomicNum(an)
         return m1
     except KeyboardInterrupt:
@@ -37,7 +39,9 @@ def make_3d_mol(xyz: str):
         print(e)
 
 
-def df_from_csv(fname: str, include_3d: bool, ff_3d: bool = False) -> pd.DataFrame:
+def df_from_csv(fname: str,
+                include_3d: bool,
+                ff_3d: bool = False) -> pd.DataFrame:
     df = pd.read_csv(fname).reset_index(drop=True)
     smiles_keys = ["smiles", "SMILES", "isosmiles"]
     smiles_key = None

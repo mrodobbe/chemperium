@@ -1,15 +1,17 @@
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem.rdchem import Mol
 from rdkit.Geometry import Point3D
 import numpy as np
 from chemperium.features.calc_features import periodic_table
 from chemperium.inp import InputArguments
-from tensorflow.keras.models import load_model
+from keras.models import load_model, Model
 import os
 import os.path as path
 import pickle
-from typing import Union
+from typing import Union, List, Tuple, Dict
+from sklearn.preprocessing import MinMaxScaler
 from chemperium.model.mpnn import MessagePassing, Readout, DirectedEdgeMessage, BondInputFeatures
 
 
@@ -26,6 +28,12 @@ class TestInputArguments:
         self.no_hydrogens = False
         self.property = [""]
         self.save_dir = ""
+        self.test_file = ""
+        self.input_file = ""
+        self.transfer_file = ""
+        self.store_models = False
+        self.transfer_property = [""]
+        self.save_dl = False
 
         if dimension == "2d":
             self.include_3d = False
@@ -51,13 +59,17 @@ class TestInputArguments:
             self.cutoff = 2.1
 
 
-def read_csv(inp: Union[TestInputArguments, InputArguments], smiles: list = None, xyz_list: list = None):
+def read_csv(inp: Union[TestInputArguments, InputArguments],
+             smiles: Union[List[str], None] = None,
+             xyz_list: Union[List[str], None] = None) -> pd.DataFrame:
     if smiles is None:
-        csv = inp.test_csv
+        csv = inp.test_file
         df_in = pd.read_csv(csv, index_col=None)
         smiles = df_in[0].tolist()
-        if inp.include_3d:
+        if inp.include_3d and xyz_list is not None:
             xyz_list = df_in[1].tolist()
+        elif inp.include_3d and xyz_list is None:
+            raise ValueError("xyz_list cannot be None!")
 
     if not inp.include_3d:
         df_out = pd.DataFrame({"smiles": smiles})
@@ -66,10 +78,15 @@ def read_csv(inp: Union[TestInputArguments, InputArguments], smiles: list = None
 
     pt = periodic_table()
     inv_pt = {v: k for k, v in pt.items()}
-    data_dict = {"smiles": [], "xyz": [], "RDMol": []}
+    data_dict = {"smiles": [],
+                 "xyz": [],
+                 "RDMol": []}  # type: Dict[str, List[Union[str, Mol]]]
     for i in range(len(smiles)):
         smi = smiles[i]
-        xyz = xyz_list[i]
+        if xyz_list is not None:
+            xyz = xyz_list[i]
+        else:
+            raise ValueError("xyz_list cannot be None!")
         try:
             lines = xyz.split("\n")[2:]
             new_lines = [line.split(" ") for line in lines]
@@ -78,17 +95,18 @@ def read_csv(inp: Union[TestInputArguments, InputArguments], smiles: list = None
                 g = [x for x in j if x]
                 cleans.append(g)
             coords = [x[1:] for x in cleans]
-            coords = np.asarray(coords).astype(np.float64)
+            coords_array = np.asarray(coords).astype(np.float64)
+            assert coords_array.shape[1] == 3
             ats = [x[0] for x in cleans]
             m = Chem.MolFromSmiles(smi)
             m1 = Chem.AddHs(m)
             AllChem.EmbedMolecule(m1)
             c1 = m1.GetConformer()
-            for j in range(m1.GetNumAtoms()):
-                x, y, z = coords[j]
-                c1.SetAtomPosition(j, Point3D(x, y, z))
-                atom = m1.GetAtomWithIdx(j)
-                an = inv_pt.get(ats[j])
+            for k in range(m1.GetNumAtoms()):
+                x, y, z = coords_array[k]
+                c1.SetAtomPosition(k, Point3D(x, y, z))
+                atom = m1.GetAtomWithIdx(k)
+                an = inv_pt.get(ats[k])
                 atom.SetAtomicNum(an)
             data_dict["smiles"].append(smi)
             data_dict["xyz"].append(xyz)
@@ -104,10 +122,7 @@ def read_csv(inp: Union[TestInputArguments, InputArguments], smiles: list = None
     return df_out
 
 
-def load_models(inp: Union[InputArguments, TestInputArguments]):
-    # models = [load_model(f"{inp.save_dir}/{model}",
-    #                      custom_objects={'MessagePassing': MessagePassing, 'Readout': Readout}, compile=False)
-    #           for model in os.listdir(f"{inp.save_dir}") if model.endswith(".h5")]
+def load_models(inp: Union[InputArguments, TestInputArguments]) -> Tuple[List[Model], Union[MinMaxScaler, None]]:
     models = []
     for model in os.listdir(f"{inp.save_dir}"):
         if model.endswith(".keras") or model.endswith(".h5"):
