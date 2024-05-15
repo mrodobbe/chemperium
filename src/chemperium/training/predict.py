@@ -3,9 +3,12 @@ from chemperium.data.load_test_data import read_csv, load_models, TestInputArgum
 from chemperium.training.run import test_external_dataset
 from chemperium.postprocessing.uncertainty_quantification import add_reliability_score
 from chemperium.postprocessing.thermodynamics import *
-from typing import Union
+from typing import Union, List, Tuple
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Model
 
 
 class Thermo:
@@ -42,8 +45,10 @@ class Thermo:
             self.inputs.save_dir = data_location + f"/thermo/{self.method}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
-    def predict_enthalpy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
-                         llot: Union[float, list, None] = None, t: float = 298.15,
+    def predict_enthalpy(self, smiles: Union[str, List[str]],
+                         xyz: Union[str, List[str], None] = None,
+                         llot: Union[float, List[float], None] = None,
+                         t: float = 298.15,
                          quality_check: bool = False) -> pd.DataFrame:
         """
         This function predicts a thermochemical property for the corresponding SMILES.
@@ -112,8 +117,10 @@ class Thermo:
 
         return df_output
 
-    def predict_entropy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
-                        t: float = 298.15, quality_check: bool = False):
+    def predict_entropy(self, smiles: Union[str, List[str]],
+                        xyz: Union[str, List[str], None] = None,
+                        t: float = 298.15,
+                        quality_check: bool = False) -> pd.DataFrame:
         df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, None, t,
                                                       self.models, self.scaler, self.inputs, "s")
 
@@ -145,9 +152,13 @@ class Thermo:
 
         return df_output
 
-    def predict_gibbs(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
-                      llot: Union[float, list, None] = None, t: float = 298.15,
+    def predict_gibbs(self,
+                      smiles: Union[str, List[str]],
+                      xyz: Union[str, List[str], None] = None,
+                      llot: Union[float, List[float], None] = None,
+                      t: float = 298.15,
                       quality_check: bool = False) -> pd.DataFrame:
+
         df_pred, dl_test, llot = control_thermo_input(smiles, self.dimension, xyz, llot, t,
                                                       self.models, self.scaler, self.inputs, "g")
         t_c = int(t)
@@ -176,9 +187,12 @@ class Thermo:
 
         return df_output
 
-    def get_nasa_polynomials(self, names: Union[str, list], smiles: Union[str, list],
-                             xyz: Union[str, list, None] = None,
-                             llot: Union[float, list, None] = None, chemkin: bool = False):
+    def get_nasa_polynomials(self,
+                             names: Union[str, List[str]],
+                             smiles: Union[str, List[str]],
+                             xyz: Union[str, List[str], None] = None,
+                             llot: Union[float, List[float], None] = None,
+                             chemkin: bool = False) -> Union[str, npt.NDArray[np.float64]]:
         """
         This function predicts the thermochemistry for the corresponding SMILES and returns the NASA polynomials.
         :param names: Either a string or a list of strings containing the species names.
@@ -205,7 +219,7 @@ class Thermo:
                                                       cp_values=df_pred[cp_keys].to_numpy())
 
         if chemkin:
-            if type(names) is str:
+            if type(names) is str and type(smiles) is str:
                 chemkin_data = get_chemkin_file(name=names, smiles=smiles, method=self.method,
                                                 mol=mols[0], nasa_coefficients=nasa_coefficients[0])
             else:
@@ -216,14 +230,17 @@ class Thermo:
                     chemkin_data += ck
             return chemkin_data
         else:
-            return nasa_coefficients
+            return nasa_coefficients.astype(np.float64)
 
 
 class Liquid:
     """:class:`Liquid` contains trained models to predict liquid-phase thermodynamic properties.
     Currently available: Boiling point (bp), critical temperature (tc), critical pressure (pc),
     critical volume (vc), octanol-water partitioning (logp), aqueous solubility (logs)."""
-    def __init__(self, prop: str, dimension: str, data_location: Union[str, None] = None):
+    def __init__(self,
+                 prop: str,
+                 dimension: str,
+                 data_location: Union[str, None] = None):
         """
         :param prop: A string with the property to predict
         (currently supported: `bp`, `tc`, `pc`, `vp`, `logp`, `logs`)
@@ -240,7 +257,9 @@ class Liquid:
             self.inputs.save_dir = data_location + f"/liquid/{self.property}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
-    def predict(self, smiles: Union[str, list], xyz: Union[str, list, None] = None) -> pd.DataFrame:
+    def predict(self,
+                smiles: Union[str, List[str]],
+                xyz: Union[str, List[str], None] = None) -> pd.DataFrame:
         """
         This function predicts the liquid-phase property for the corresponding SMILES.
         :param xyz: Either a string of the xyz coordinates or a list of xyz coordinate strings.
@@ -261,7 +280,9 @@ class Liquid:
 
 
 class Safety:
-    def __init__(self, data_location: Union[str, None] = None):
+    def __init__(self,
+                 data_location: Union[str, None] = None):
+
         self.property = ["AIT", "FLTL", "FLTU", "FP", "NBP", "SOLP", "MP"]
         self.dimension = "2d"
         self.inputs = TestInputArguments(dimension=self.dimension)
@@ -272,7 +293,9 @@ class Safety:
             self.inputs.save_dir = data_location + f"/caesar-data/liquid/safety/2d"
         self.models, self.scaler = load_models(self.inputs)
 
-    def predict(self, smiles: Union[str, list]) -> pd.DataFrame:
+    def predict(self,
+                smiles: Union[str, List[str]]) -> pd.DataFrame:
+
         df_out = check_input(smiles, None, self.inputs)
         dl_test = DataLoader(input_pars=self.inputs, transfer=False, test=True, df=df_out)
         dl_test.scaler = self.scaler
@@ -280,7 +303,18 @@ class Safety:
         return df_pred
 
 
-def control_thermo_input(smiles, dim, xyz, llot, t, models, scaler, inputs, prop):
+def control_thermo_input(smiles: Union[List[str], str],
+                         dim: str,
+                         xyz: Union[None, List[str], str],
+                         llot: Union[None, float, List[float], npt.NDArray[np.float64]],
+                         t: float,
+                         models: List[Model],
+                         scaler: MinMaxScaler,
+                         inputs: TestInputArguments,
+                         prop: str) -> Tuple[pd.DataFrame,
+                                             DataLoader,
+                                             Union[None, float, List[float], npt.NDArray[np.float64]]]:
+
     if dim == "3d" and xyz is None:
         raise ValueError("Parameter xyz cannot be None! "
                          "You have to provide 3D coordinates to make predictions with a 3D model.")
@@ -289,13 +323,7 @@ def control_thermo_input(smiles, dim, xyz, llot, t, models, scaler, inputs, prop
         raise ValueError("Please provide low level-of-theory Dh298 estimate "
                          "to calculate enthalpies of formation at temperatures other than 298.15 K.")
 
-    if type(smiles) is str:
-        df_out = read_csv(inputs, smiles=[smiles], xyz_list=[xyz])
-        llot = [llot]
-    elif type(smiles) is list:
-        df_out = read_csv(inputs, smiles=smiles, xyz_list=xyz)
-    else:
-        raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
+    df_out = check_input(smiles, xyz, inputs)
 
     dl_test = DataLoader(input_pars=inputs, transfer=False, test=True, df=df_out)
     dl_test.scaler = scaler
@@ -304,7 +332,7 @@ def control_thermo_input(smiles, dim, xyz, llot, t, models, scaler, inputs, prop
     return df_pred, dl_test, llot
 
 
-def get_heat_capacity_values(inputs):
+def get_heat_capacity_values(inputs: TestInputArguments) -> Tuple[npt.NDArray[np.float64], List[str]]:
     temperatures = np.array([298.15, 303.15, 313.15, 323.15, 333.15, 343.15, 353.15,
                              363.15, 373.15, 383.15, 393.15, 403.15, 413.15, 423.15,
                              448.15, 473.15, 498.15, 523.15, 548.15, 573.15, 598.15,
@@ -313,14 +341,19 @@ def get_heat_capacity_values(inputs):
                              1073.15, 1123.15, 1173.15, 1223.15, 1273.15, 1323.15, 1373.15,
                              1423.15, 1473.15, 1523.15])
     cp_keys = [f"{key}_prediction" for key in inputs.property[2:]]
-    return temperatures, cp_keys
+    return temperatures.astype(np.float64), cp_keys
 
 
-def check_input(smiles, xyz, inputs):
-    if type(smiles) is str:
-        df_out = read_csv(inputs, smiles=[smiles], xyz_list=xyz)
-    elif type(smiles) is list:
+def check_input(smiles: Union[List[str], str],
+                xyz: Union[None, List[str], str],
+                inputs: TestInputArguments) -> pd.DataFrame:
+
+    if type(smiles) is str and type(xyz) is str:
+        df_out = read_csv(inputs, smiles=[smiles], xyz_list=[str(xyz)])
+    elif type(smiles) is list and type(xyz) is list:
         df_out = read_csv(inputs, smiles=smiles, xyz_list=xyz)
+    elif type(smiles) is list and xyz is None:
+        df_out = read_csv(inputs, smiles=smiles, xyz_list=None)
     else:
         raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
 
