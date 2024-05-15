@@ -1,13 +1,40 @@
+import pandas as pd
+import keras
+import tensorflow as tf
+from chemperium.inp import InputArguments
+from chemperium.data.load_test_data import TestInputArguments
 from chemperium.data.load_data import *
 from chemperium.model.mpnn import MPNN
-from chemperium.molecule.batch import MPNNDataset
+from chemperium.molecule.batch import MPNNDataset, prepare_batch
 from sklearn.model_selection import KFold
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping
+from keras.models import Model
 from chemperium.training.evaluate import *
 import gc
+from typing import Union, List, Tuple
+import numpy as np
+import numpy.typing as npt
+from sklearn.preprocessing import MinMaxScaler
 
 
-def run_model(x, y, train_indices, validation_indices, inp, model=None):
+def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                       tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                       tf.RaggedTensor, tf.RaggedTensor],
+              y: npt.NDArray[np.float64],
+              train_indices: npt.NDArray[np.int64],
+              validation_indices: npt.NDArray[np.int64],
+              inp: InputArguments,
+              model: Union[None, Model] = None) -> Model:
+    """
+    This function trains an individual message-passing neural network.
+    :param x: Tuple of RaggedTensors
+    :param y: NumPy array with output data
+    :param train_indices: NumPy array with training indices
+    :param validation_indices: NumPy array with validation indices
+    :param inp: Input arguments
+    :param model: (Optional) Pretrained Keras model
+    :return: Trained Keras model
+    """
     x_train = tuple(tf.gather(tup, train_indices) for tup in x)
     x_val = tuple(tf.gather(tup, validation_indices) for tup in x)
 
@@ -62,7 +89,22 @@ def run_model(x, y, train_indices, validation_indices, inp, model=None):
     return mpnn
 
 
-def ensemble(x, y, model_indices, inp: InputArguments, pretrained_models=None):
+def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                      tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                      tf.RaggedTensor, tf.RaggedTensor],
+             y: npt.NDArray[np.float64],
+             model_indices: npt.NDArray[np.int64],
+             inp: InputArguments,
+             pretrained_models: Union[None, List[Model]] = None) -> List[Model]:
+    """
+    This function trains an ensemble of message-passing neural networks.
+    :param x: Tuple of RaggedTensors
+    :param y: NumPy array with output data
+    :param model_indices: NumPy array containing the indices that do not belong to the test set
+    :param inp: Input arguments
+    :param pretrained_models: (Optional) List with pre-trained Keras models.
+    :return: List with trained models
+    """
     kf = KFold(n_splits=inp.outer_folds, random_state=None, shuffle=False)
     kf.get_n_splits(model_indices)
 
@@ -84,8 +126,20 @@ def ensemble(x, y, model_indices, inp: InputArguments, pretrained_models=None):
     return models
 
 
-def run_training(dl: DataLoader, inp: InputArguments, return_models=False, pretrained_models=None):
-    tf.keras.utils.set_random_seed(inp.seed)
+def run_training(dl: DataLoader,
+                 inp: InputArguments,
+                 return_models: bool = False,
+                 pretrained_models: Union[None, List[Model], Model] = None) -> Union[List[Model], Model, None]:
+    """
+    This function is used to train message-passing neural networks
+    :param dl: DataLoader object containing the training dataset
+    :param inp: Input arguments
+    :param return_models: Whether to return trained models as output of this function
+    :param pretrained_models: Pre-trained Keras models
+    :return: (Optional) Trained Keras models
+    """
+
+    keras.utils.set_random_seed(inp.seed)
     x = dl.x
     y = dl.y
     train_indices, validation_indices, test_indices, model_indices = split_dataset(len(y), seed=inp.seed,
@@ -101,6 +155,8 @@ def run_training(dl: DataLoader, inp: InputArguments, return_models=False, pretr
             return models
         elif inp.test:
             test_external_dataset(models, dl.scaler, inp)
+            return None
+        return None
     else:
         if pretrained_models is None:
             mpnn = run_model(x, y, train_indices, validation_indices, inp)
@@ -115,12 +171,29 @@ def run_training(dl: DataLoader, inp: InputArguments, return_models=False, pretr
         df_val.to_csv(inp.save_dir + "/validation_preds.csv")
         if return_models:
             return mpnn
+
         elif inp.test:
             test_external_dataset(mpnn, dl.scaler, inp)
+            return None
+        return None
 
 
-def run_transfer(dl_large: DataLoader, inp: InputArguments):
-    models = run_training(dl_large, inp, return_models=True)
+def run_pretraining(dl: DataLoader,
+                    inp: InputArguments) -> Union[List[Model], Model]:
+    models = run_training(dl, inp, True, None)
+    return models
+
+
+def run_transfer(dl_large: DataLoader,
+                 inp: InputArguments) -> None:
+    """
+    This function performs transfer learning.
+    :param dl_large: DataLoader containing the pre-training data
+    :param inp: Input arguments
+    :return: Function does not return anything
+    """
+    models = run_pretraining(dl_large, inp)
+
     del dl_large
     gc.collect()
     if inp.locked_transfer:
@@ -128,9 +201,11 @@ def run_transfer(dl_large: DataLoader, inp: InputArguments):
             for model in models:
                 for layer in model.layers[:9]:
                     layer.trainable = False
-        else:
+        elif type(models) is Model:
             for layer in models.layers[:9]:
                 layer.trainable = False
+        else:
+            raise TypeError("Incorrect Keras model type.")
 
     print("Start loading the transfer file...")
     inp.input_file = inp.transfer_file
@@ -146,13 +221,24 @@ def run_transfer(dl_large: DataLoader, inp: InputArguments):
         run_training(dl_small, inp, return_models=False, pretrained_models=models)
 
 
-def test_external_dataset(models, scaler, inp: Union[InputArguments, TestInputArguments],
-                          dl: DataLoader = None, return_results: bool = False):
+def test_external_dataset(models: Union[Model, List[Model]],
+                          scaler: Union[None, MinMaxScaler],
+                          inp: Union[InputArguments, TestInputArguments],
+                          dl: Union[None, DataLoader] = None,
+                          return_results: bool = False) -> Union[None, pd.DataFrame]:
+    """
+    This function makes predictions on an external dataset using trained Keras models.
+    :param models: List of keras models or a single keras model
+    :param scaler: MinMaxScaler to scale data
+    :param inp: Input arguments
+    :param dl: (Optional) Add pre-made DataLoader
+    :param return_results: (Optional) Return results as pandas dataframe. Will by default write results to a file.
+    :return: (Optional) Pandas DataFrame with predictions
+    """
+
     if dl is None:
         print("Start loading the test file...")
         inp.input_file = inp.test_file
-        print(f"New input file: {inp.input_file}")
-        print(f"Test file: {inp.test_file}")
         dl_test = DataLoader(input_pars=inp, transfer=False, test=True)
         dl_test.scaler = scaler
     else:
@@ -161,11 +247,13 @@ def test_external_dataset(models, scaler, inp: Union[InputArguments, TestInputAr
         df_pred = external_ensemble_test(models, dl_test, inp)
         if not return_results:
             df_pred.to_csv(inp.save_dir + "/external_test_ensemble_preds.csv")
+            return None
         else:
             return df_pred
     else:
         df_pred = external_model_test(models, dl_test, inp)
         if not return_results:
             df_pred.to_csv(inp.save_dir + "/external_test_preds.csv")
+            return None
         else:
             return df_pred
