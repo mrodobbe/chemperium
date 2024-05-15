@@ -39,7 +39,7 @@ class Thermo:
         if data_location is None:
             self.inputs.save_dir = self.inputs.dir + f"/caesar-data/thermo/{self.method}/{self.dimension}"
         else:
-            self.inputs.save_dir = data_location + f"/caesar-data/thermo/{self.method}/{self.dimension}"
+            self.inputs.save_dir = data_location + f"/thermo/{self.method}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict_enthalpy(self, smiles: Union[str, list], xyz: Union[str, list, None] = None,
@@ -237,7 +237,7 @@ class Liquid:
         if data_location is None:
             self.inputs.save_dir = self.inputs.dir + f"/caesar-data/liquid/{self.property}/{self.dimension}"
         else:
-            self.inputs.save_dir = data_location + f"/caesar-data/liquid/{self.property}/{self.dimension}"
+            self.inputs.save_dir = data_location + f"/liquid/{self.property}/{self.dimension}"
         self.models, self.scaler = load_models(self.inputs)
 
     def predict(self, smiles: Union[str, list], xyz: Union[str, list, None] = None) -> pd.DataFrame:

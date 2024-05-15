@@ -21,7 +21,7 @@ class ArgParser:
         self.parser.add_argument("--transfer_patience", type=int,
                                  help="Choose patience for transferred model", default=30)
         self.parser.add_argument("--depth", type=int, help="Message-passing radius", default=6)
-        self.parser.add_argument("--folds", type=int, help="Number of folds for ensemble", default=10)
+        self.parser.add_argument("--folds", type=int, help="Number of folds for ensemble", default=1)
         self.parser.add_argument("--num_layers", type=int, help="Choose number of hidden layers", default=5)
         self.parser.add_argument("--hidden_size", type=int,
                                  help="Choose number of neurons per hidden layer", default=500)
