@@ -304,7 +304,7 @@ def atomic_feature_vector(n: int) -> npt.NDArray[np.float64]:
 
     if vector_pos is None:
         print(f"Atom number {n} is not yet supported!")
-        return np.zeros(len_vector, dtype=np.float64)
+        return np.ones(len_vector, dtype=np.float64)
     else:
         return one_hot_vector(vector_pos, len_vector)
 
@@ -323,7 +323,7 @@ def hybridization_vector(s: str) -> npt.NDArray[np.float64]:
     len_vector = len(pos_dict)
 
     if vector_pos is None:  # This matches UNSPECIFIED, which corresponds to hydrogen atoms
-        return np.zeros(len_vector, dtype=np.float64)
+        return np.ones(len_vector, dtype=np.float64)
     else:
         return one_hot_vector(vector_pos, len_vector)
 
@@ -340,7 +340,7 @@ def bond_type_vector(n: float) -> npt.NDArray[np.float64]:
 
     if vector_pos is None:
         print(f"Bond type {n} is not yet supported!")
-        return np.zeros(len_vector, dtype=np.float64)
+        return np.ones(len_vector, dtype=np.float64)
     else:
         return one_hot_vector(vector_pos, len_vector)
 
