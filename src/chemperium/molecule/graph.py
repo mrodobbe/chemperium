@@ -1,10 +1,12 @@
 import tensorflow as tf
-from chemperium.features.find_h_bonds import find_h_bonds
 from chemperium.features.featurize import *
+from chemperium.inp import InputArguments
+from chemperium.data.load_test_data import TestInputArguments
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 from rdkit.Chem.rdchem import Mol
 import numpy as np
+from typing import Union
 
 
 class Mol3DGraph:
@@ -12,7 +14,8 @@ class Mol3DGraph:
     This class makes a three-dimensional graph object from an RDKit Mol object and adds features to atoms and bonds.
     """
 
-    def __init__(self, mol: Mol, smiles: str, xyz: str, input_pars: InputArguments, spin: int = None):
+    def __init__(self, mol: Mol, smiles: str, input_pars: Union[InputArguments, TestInputArguments],
+                 spin: Union[None, int] = None):
         self.input_pars = input_pars
         if self.input_pars.no_hydrogens:
             try:
@@ -26,30 +29,13 @@ class Mol3DGraph:
         self.num_bonds = 0
         self.atom_features = []
         self.bond_features = []
-        if self.input_pars.no_hydrogens or not self.input_pars.include_3d:
-            self.hbond_dict = {
-                                'H_intra': [],
-                                'H_inter': [],
-                                'acc_intra': [],
-                                'acc_inter': [],
-                                'don_intra': [],
-                                'don_inter': []
-                            }
-        else:
-            self.hbond_dict = find_h_bonds(self.mol, xyz_lines=xyz, smi=smiles)
-        self.hbonds = np.empty((len(self.hbond_dict["H_intra"]), 2))
-        self.num_hbonds = len(self.hbonds)
+
         if self.input_pars.include_3d:
             self.xyz = self.mol.GetConformer().GetPositions()
             self.distance_matrix = rdmolops.Get3DDistanceMatrix(self.mol)
         else:
             self.xyz = np.array([[0, 0, 0] for _ in range(self.mol.GetNumAtoms())])
             self.distance_matrix = None
-
-        if len(self.hbond_dict["H_intra"]) is not None:
-            for i in range(len(self.hbond_dict["H_intra"])):
-                self.hbonds[i][0] = self.hbond_dict["H_intra"][i]
-                self.hbonds[i][1] = self.hbond_dict["acc_intra"][i]
 
         if self.input_pars.mfd:
             self.mol_features = np.array([get_molecular_features(self.mol, spin=spin)])
@@ -58,7 +44,7 @@ class Mol3DGraph:
 
         for atom in self.mol.GetAtoms():
             self.atom_features.append(
-                get_atomic_features(atom, self.mol, self.hbond_dict,
+                get_atomic_features(atom, self.mol,
                                     self.distance_matrix, self.input_pars))
         self.atom_features = np.asarray(self.atom_features)
         self.num_atoms = len(self.atom_features)
@@ -74,7 +60,6 @@ class Mol3DGraph:
         self.bond_feature_length = len(self.bond_features[0])
 
         self.num_bonds_vector = [j for j in range(self.num_bonds)]
-        self.num_hbonds_vector = [j for j in range(self.num_hbonds)]
 
         try:
             cutoff_value = self.input_pars.cutoff
@@ -173,13 +158,13 @@ class Mol3DGraph:
             bond_pairs = self.bond_pairs[:, 1]
             wh = np.where((tf.cast(bond_pairs, "int32") == i))
             self.atom_bond_neighbors.append(wh[0])
-            nbs = []
+            neighboring_bonds = []
             for j in wh[0]:
                 modulo = j % 2
                 if modulo == 0:
                     neighbor = bond_pairs[j + 1]
                 else:
                     neighbor = bond_pairs[j - 1]
-                nbs.append(neighbor)
-            nbs = np.asarray(nbs).astype(np.int64)
-            self.atom_neighbors.append(nbs)
+                neighboring_bonds.append(neighbor)
+            neighboring_bonds = np.asarray(neighboring_bonds).astype(np.int64)
+            self.atom_neighbors.append(neighboring_bonds)

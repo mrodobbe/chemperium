@@ -5,19 +5,19 @@ from typing import Dict, Tuple
 import numpy.typing as npt
 
 
-def one_hot_vector(value: int, length: int) -> npt.NDArray[np.int64]:
+def one_hot_vector(value: int, length: int) -> npt.NDArray[np.float64]:
     """
     :param value: An integer between 0 and length-1
     :param length: Number of possible values
     :return: A vector of zeros with 1 on position of value
     """
-    vector = np.zeros(length)
+    vector = np.zeros(length).astype(np.float64)
     vector[value] = 1
 
     return vector
 
 
-def mendeleev(n):
+def mendeleev(n: int) -> str:
     """
     Returns the chemical symbol for an atomic number.
     """
@@ -141,7 +141,12 @@ def mendeleev(n):
         117: "Ts",
         118: "Og"
     }
-    return periodic_table.get(n)
+    atomic_symbol = periodic_table.get(n)
+
+    if atomic_symbol is None:
+        raise ValueError(f"Atom number {n} is not yet supported!")
+
+    return atomic_symbol
 
 
 def periodic_table() -> Dict[int, str]:
@@ -268,7 +273,7 @@ def periodic_table() -> Dict[int, str]:
     return periodic_table
 
 
-def atomic_feature_vector(n: int) -> npt.NDArray[np.int64]:
+def atomic_feature_vector(n: int) -> npt.NDArray[np.float64]:
     """
     The algorithm currently allows molecules with H, B, C, N, O, F, Si, P, S, Cl, Ge, As, Se, Br, Sb, Te, I, Au.
     :param n: Atomic number
@@ -295,12 +300,14 @@ def atomic_feature_vector(n: int) -> npt.NDArray[np.int64]:
         79: 17
     }
     vector_pos = pos_dict.get(n)
+    if vector_pos is None:
+        raise ValueError(f"Atom number {n} is not yet supported!")
     len_vector = len(pos_dict)
 
     return one_hot_vector(vector_pos, len_vector)
 
 
-def hybridization_vector(s: str) -> npt.NDArray[np.int64]:
+def hybridization_vector(s: str) -> npt.NDArray[np.float64]:
     pos_dict = {
         "S": 0,
         "SP": 1,
@@ -311,12 +318,14 @@ def hybridization_vector(s: str) -> npt.NDArray[np.int64]:
     }
     s = str(s)
     vector_pos = pos_dict.get(s)
+    if vector_pos is None:
+        raise ValueError(f"Hybridization {s} is not yet supported!")
     len_vector = len(pos_dict)
 
     return one_hot_vector(vector_pos, len_vector)
 
 
-def bond_type_vector(n: float) -> npt.NDArray[np.int64]:
+def bond_type_vector(n: float) -> npt.NDArray[np.float64]:
     pos_dict = {
         1.0: 0,
         1.5: 1,
@@ -324,6 +333,8 @@ def bond_type_vector(n: float) -> npt.NDArray[np.int64]:
         3.0: 3
     }
     vector_pos = pos_dict.get(n)
+    if vector_pos is None:
+        raise ValueError(f"Atom number {n} is not yet supported!")
     len_vector = len(pos_dict)
 
     return one_hot_vector(vector_pos, len_vector)
@@ -355,11 +366,7 @@ def get_atomic_rdf(atom: Atom,
 
     g = np.sum(g, axis=0)
     g = np.nan_to_num(g)
+    g_array = np.array(g).astype(np.float64)
+    r = np.array(r).astype(np.float64)
 
-    return r, g
-
-
-class Sigma:
-    def __init__(self, df_value):
-        self.df = df_value
-        self.sigma = self.df.loc[:, "-0.022":"0.026"].to_numpy().astype(np.float)
+    return r, g_array
