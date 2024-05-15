@@ -7,17 +7,35 @@ from chemperium.molecule.graph import Mol3DGraph
 from chemperium.molecule.batch import featurize_graphs
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem.rdchem import Mol
 from rdkit.Geometry import Point3D
 from sklearn.preprocessing import MinMaxScaler
-from typing import Union
+from typing import Union, Tuple, List
 import os
 import pickle
 import numpy as np
+import numpy.typing as npt
+import tensorflow as tf
 
 
 class DataLoader:
+    """
+    A DataLoader object contains all information about a database:
+    * SMILES
+    * Properties
+    * RDKit molecules
+    * Molecular graphs
+    * Output scaler
+    """
     def __init__(self, input_pars: Union[InputArguments, TestInputArguments],
                  transfer: bool = False, test: bool = False, df: pd.DataFrame = None):
+        """
+
+        :param input_pars: Input arguments
+        :param transfer: Whether to do transfer learning
+        :param test: Check if in test phase
+        :param df: Pandas DataFrame with database
+        """
 
         self.inp = input_pars
         self.transfer = transfer
@@ -26,15 +44,19 @@ class DataLoader:
             self.df = self.load_data()
         else:
             self.df = df
-        self.rdmol_list = self.get_rdmol()
+        self.rdmol_list = np.array(self.get_rdmol())
         self.smiles = self.get_smiles()
-        self.charges = self.get_charges()
-        self.graphs = self.get_graphs()
+        self.graphs = np.array(self.get_graphs())
         self.scaler = self.get_scaler()
         self.x = self.get_xs()
         self.y = self.get_outputs(inputs=self.inp)
 
-    def load_data(self):
+    def load_data(self) -> pd.DataFrame:
+        """
+        Convert a csv file into a Pandas DataFrame
+        :return: Input data in Pandas DataFrame
+        """
+
         if self.transfer:
             df = df_from_csv(self.inp.transfer_file, self.inp.include_3d, self.inp.ff_3d)
         elif self.test:
@@ -44,7 +66,12 @@ class DataLoader:
         print(f"We have loaded a database with length {len(df.index)}!")
         return df
 
-    def get_rdmol(self):
+    def get_rdmol(self) -> List[Mol]:
+        """
+        Create RDKit objects for all molecules in the database.
+        :return: List with RDKit molecules
+        """
+
         if self.inp.ff_3d:
             mols = []
             for i in self.df.index:
@@ -64,7 +91,6 @@ class DataLoader:
                 except ValueError:
                     self.df = self.df.drop(i)
 
-            mols = np.asarray(mols)
             return mols
         elif self.inp.no_hydrogens:
             mols = []
@@ -95,7 +121,7 @@ class DataLoader:
                     self.df = self.df.drop(i)
                 except IndexError:
                     self.df = self.df.drop(i)
-            mols = np.asarray(mols)
+
             return mols
         elif not self.inp.include_3d:
             mols = []
@@ -121,11 +147,15 @@ class DataLoader:
                 else:
                     self.df = self.df.drop(i)
             self.df["RDMol"] = mols
-            return np.asarray(mols)
+            return mols
         else:
-            return self.df["RDMol"].to_numpy()
+            return self.df["RDMol"].to_list()
 
-    def get_smiles(self):
+    def get_smiles(self) -> npt.NDArray[np.str_]:
+        """
+        Read all SMILES in database.
+        :return: A NumPy array with SMILES
+        """
         try:
             return self.df["smiles"].to_numpy()
         except KeyError:
@@ -138,24 +168,16 @@ class DataLoader:
             else:
                 raise KeyError("No SMILES column detected!")
 
-    def get_charges(self):
-        if "chargeVector" in self.df.keys():
-            charges = [np.asarray(self.df["chargeVector"][idx]) for idx in self.df.index]
-            return charges
-        else:
-            return None
-
-    def get_spin(self):
-        if "multiplicity" in self.df.keys():
-            spin = self.df["multiplicity"].to_numpy()
-            return spin
-
-    def get_graphs(self):
+    def get_graphs(self) -> List[Mol3DGraph]:
+        """
+        Convert all RDKit molecules in the database to 3D molecular graphs.
+        :return: List with Mol3DGraph objects.
+        """
         idx = self.df.index
         mgs = np.empty(len(idx), dtype="object")
         for i in reversed(range(len(idx))):
             try:
-                graph = Mol3DGraph(self.rdmol_list[i], self.smiles[i], self.df["xyz"][idx[i]], self.inp)
+                graph = Mol3DGraph(self.rdmol_list[i], self.smiles[i], self.inp)
                 try:
                     mgs[i] = graph
                 except AttributeError as e:
@@ -170,15 +192,31 @@ class DataLoader:
                 self.df = self.df.drop(idx[i])
                 self.smiles = self.df["smiles"].to_numpy()
                 self.rdmol_list = self.df["RDMol"].to_numpy()
-        return mgs
+        return list(mgs)
 
-    def get_scaler(self):
+    def get_scaler(self) -> MinMaxScaler:
+        """
+        Create a new 3D scaler object.
+        :return: A scikit-learn MinMaxScaler
+        """
         return MinMaxScaler(copy=False)
 
-    def get_xs(self):
+    def get_xs(self) -> Tuple[tf.RaggedTensor, tf.RaggedTensor,
+                              tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                              tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor]:
+        """
+        Convert the Mol3DGraphs into TensorFlow objects.
+        :return: Tuple with RaggedTensors
+        """
         return featurize_graphs(self.graphs)
 
-    def get_outputs(self, inputs: InputArguments = None):
+    def get_outputs(self,
+                    inputs: Union[None, InputArguments, TestInputArguments] = None) -> npt.NDArray[np.float64]:
+        """
+        Retrieve the output properties from the Pandas DataFrame
+        :param inputs: Input arguments
+        :return: NumPy array with all properties
+        """
         if self.test:
             return np.ones(self.graphs.shape[0])
         if inputs is not None:
@@ -208,14 +246,31 @@ class DataLoader:
         return outputs
 
 
-def input_checker(save_dir: str):
+def input_checker(save_dir: str) -> None:
+    """
+    Evaluate if save_dir exists
+    :param save_dir: Folder to store all data of the training.
+    :return: Function does not return anything
+    """
     try:
         os.mkdir(save_dir)
     except FileExistsError:
         print("Folder already exists. Data in this folder will be overwritten.")
 
 
-def split_dataset(num_data: int, seed: int = 120897, split_ratio: tuple = (0.8, 0.1, 0.1)):
+def split_dataset(num_data: int,
+                  seed: int = 120897,
+                  split_ratio: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> Tuple[npt.NDArray[np.int64],
+                                                                                      npt.NDArray[np.int64],
+                                                                                      npt.NDArray[np.int64],
+                                                                                      npt.NDArray[np.int64]]:
+    """
+    Split dataset into training-validation-test.
+    :param num_data: Number of data in the dataset
+    :param seed: Seed to initialize pseudo-random generator
+    :param split_ratio: Tuple with training-validation-test ratio. Must sum to 1.
+    :return: Tuple with four arrays: training-validation-test indices and model indices (=training+validation)
+    """
     np.random.seed(seed)
     s = np.arange(num_data)
     np.random.shuffle(s)
