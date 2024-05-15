@@ -354,6 +354,8 @@ def check_input(smiles: Union[List[str], str],
         df_out = read_csv(inputs, smiles=smiles, xyz_list=xyz)
     elif type(smiles) is list and xyz is None:
         df_out = read_csv(inputs, smiles=smiles, xyz_list=None)
+    elif type(smiles) is str and xyz is None:
+        df_out = read_csv(inputs, smiles=[smiles], xyz_list=None)
     else:
         raise IndexError(f"Type {type(smiles)} is not supported for parameter smiles.")
 

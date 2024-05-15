@@ -300,11 +300,13 @@ def atomic_feature_vector(n: int) -> npt.NDArray[np.float64]:
         79: 17
     }
     vector_pos = pos_dict.get(n)
-    if vector_pos is None:
-        raise ValueError(f"Atom number {n} is not yet supported!")
     len_vector = len(pos_dict)
 
-    return one_hot_vector(vector_pos, len_vector)
+    if vector_pos is None:
+        print(f"Atom number {n} is not yet supported!")
+        return np.zeros(len_vector, dtype=np.float64)
+    else:
+        return one_hot_vector(vector_pos, len_vector)
 
 
 def hybridization_vector(s: str) -> npt.NDArray[np.float64]:
@@ -318,11 +320,13 @@ def hybridization_vector(s: str) -> npt.NDArray[np.float64]:
     }
     s = str(s)
     vector_pos = pos_dict.get(s)
-    if vector_pos is None:
-        raise ValueError(f"Hybridization {s} is not yet supported!")
     len_vector = len(pos_dict)
 
-    return one_hot_vector(vector_pos, len_vector)
+    if vector_pos is None:
+        print(f"Hybridization {s} is not yet supported!")
+        return np.zeros(len_vector, dtype=np.float64)
+    else:
+        return one_hot_vector(vector_pos, len_vector)
 
 
 def bond_type_vector(n: float) -> npt.NDArray[np.float64]:
@@ -333,11 +337,13 @@ def bond_type_vector(n: float) -> npt.NDArray[np.float64]:
         3.0: 3
     }
     vector_pos = pos_dict.get(n)
-    if vector_pos is None:
-        raise ValueError(f"Atom number {n} is not yet supported!")
     len_vector = len(pos_dict)
 
-    return one_hot_vector(vector_pos, len_vector)
+    if vector_pos is None:
+        print(f"Bond type {n} is not yet supported!")
+        return np.zeros(len_vector, dtype=np.float64)
+    else:
+        return one_hot_vector(vector_pos, len_vector)
 
 
 def get_atomic_rdf(atom: Atom,

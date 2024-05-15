@@ -1,10 +1,13 @@
-from tensorflow.keras.layers import Layer
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Input, LeakyReLU, Concatenate
+from keras.layers import Layer
+from keras.models import Model
+from keras.layers import Dense, Input, LeakyReLU, Concatenate
 import tensorflow as tf
+from chemperium.inp import InputArguments
+# mypy: allow-untyped-defs
+# mypy: allow-untyped-calls
 
 
-class BondInputFeatures(Layer):
+class BondInputFeatures(Layer):  # type: ignore[misc]
     def __init__(self, hidden_size: int = 64):
         super().__init__()
         self.hidden_size = hidden_size
@@ -60,7 +63,7 @@ def get_distance_weight(xyz, bond_pairs):
     return xyzd
 
 
-class DirectedEdgeMessage(Layer):
+class DirectedEdgeMessage(Layer):  # type: ignore[misc]
     def __init__(self, hidden_size: int = 64, include_3d: bool = True, mean_readout: bool = False):
         super().__init__()
         self.hidden_size = hidden_size
@@ -107,9 +110,8 @@ class DirectedEdgeMessage(Layer):
         return message
 
 
-class MessagePassing(Layer):
-    def __init__(self, hidden_size: int = 64, depth: int = 4,
-                 include_3d: bool = True, mean_readout: bool = False, **kwargs):
+class MessagePassing(Layer):  # type: ignore[misc]
+    def __init__(self, hidden_size: int = 64, depth: int = 4, include_3d: bool = True, mean_readout: bool = False, **kwargs):  # type: ignore[no-untyped-def]
         super().__init__()
         self.hidden_size = hidden_size
         self.depth = depth
@@ -179,8 +181,8 @@ class MessagePassing(Layer):
         return bond_representations
 
 
-class Readout(Layer):
-    def __init__(self, hidden_size: int = 256, mean_readout: bool = False, **kwargs):
+class Readout(Layer):  # type: ignore[misc]
+    def __init__(self, hidden_size: int = 256, mean_readout: bool = False, **kwargs):  # type: ignore[no-untyped-def]
         super().__init__()
         self.hidden_size = hidden_size
         self.mean_readout = mean_readout
@@ -237,10 +239,19 @@ class Readout(Layer):
         return h_molecule
 
 
-def MPNN(d_atoms, d_bonds, d_out,
-         hidden_message=64, depth=4, representation_size=256, hidden_size=512, layers=5,
-         include_3d: bool = True, mean_readout: bool = False, mfd: bool = False, mfd_size: int = 64,
-         seed: int = 210995):
+def MPNN(d_atoms: int,
+         d_bonds: int,
+         d_out: int,
+         hidden_message: int = 64,
+         depth: int = 4,
+         representation_size: int = 256,
+         hidden_size: int = 512,
+         layers: int = 5,
+         include_3d: bool = True,
+         mean_readout: bool = False,
+         mfd: bool = False,
+         mfd_size: int = 64,
+         seed: int = 210995) -> tf.keras.Model:
     tf.keras.utils.set_random_seed(seed)
     atom_features = Input(shape=[100, d_atoms], dtype="float32", name="initial_atom_features")
     bond_features = Input(shape=[250, d_bonds], dtype="float32", name="initial_bond_features")

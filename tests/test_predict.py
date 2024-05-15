@@ -3,7 +3,7 @@ import chemperium as cp
 
 def test_thermo_2d():
     smi = "COc1ccccc1"
-    thermo = cp.training.predict.Thermo("g3mp2b3", "2d", "../test_data")
+    thermo = cp.training.predict.Thermo("g3mp2b3", "2d", "test_data")
     thermo.predict_entropy(smi)
 
 
@@ -28,11 +28,11 @@ def test_thermo_3d():
           'H         -1.65940        2.38020        0.00040\n' \
           'H          0.74700        1.87060        0.00030'
     llot = -5.13245
-    thermo = cp.training.predict.Thermo("g3mp2b3", "3d", "../test_data")
+    thermo = cp.training.predict.Thermo("g3mp2b3", "3d", "test_data")
     thermo.predict_enthalpy(smi, xyz, llot, t=1000, quality_check=True)
 
 
 def test_liquid_2d():
     smi = "COc1ccccc1"
-    liquid = cp.training.predict.Liquid("logp", "2d", "../test_data")
+    liquid = cp.training.predict.Liquid("logp", "2d", "test_data")
     liquid.predict(smi)

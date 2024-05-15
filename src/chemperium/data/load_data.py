@@ -132,9 +132,11 @@ class DataLoader:
                 key_value = "smiles"
             for i in self.df.index:
                 mol = Chem.MolFromSmiles(self.df[key_value][i])
+
                 if mol is None:
                     self.df = self.df.drop(i)
                 elif not self.inp.no_hydrogens:
+                    Chem.SanitizeMol(mol)
                     mol = Chem.AddHs(mol)
                 else:
                     pass
