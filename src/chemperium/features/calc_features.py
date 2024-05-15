@@ -1,8 +1,11 @@
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.rdchem import Atom, Mol, Bond
+from typing import Dict, Tuple
+import numpy.typing as npt
 
 
-def one_hot_vector(value, length):
+def one_hot_vector(value: int, length: int) -> npt.NDArray[np.int64]:
     """
     :param value: An integer between 0 and length-1
     :param length: Number of possible values
@@ -141,7 +144,7 @@ def mendeleev(n):
     return periodic_table.get(n)
 
 
-def periodic_table():
+def periodic_table() -> Dict[int, str]:
     periodic_table = {
         1: "H",
         2: "He",
@@ -265,7 +268,7 @@ def periodic_table():
     return periodic_table
 
 
-def atomic_feature_vector(n: int):
+def atomic_feature_vector(n: int) -> npt.NDArray[np.int64]:
     """
     The algorithm currently allows molecules with H, B, C, N, O, F, Si, P, S, Cl, Ge, As, Se, Br, Sb, Te, I, Au.
     :param n: Atomic number
@@ -297,7 +300,7 @@ def atomic_feature_vector(n: int):
     return one_hot_vector(vector_pos, len_vector)
 
 
-def hybridization_vector(s):
+def hybridization_vector(s: str) -> npt.NDArray[np.int64]:
     pos_dict = {
         "S": 0,
         "SP": 1,
@@ -313,7 +316,7 @@ def hybridization_vector(s):
     return one_hot_vector(vector_pos, len_vector)
 
 
-def bond_type_vector(n):
+def bond_type_vector(n: float) -> npt.NDArray[np.int64]:
     pos_dict = {
         1.0: 0,
         1.5: 1,
@@ -326,39 +329,15 @@ def bond_type_vector(n):
     return one_hot_vector(vector_pos, len_vector)
 
 
-def h_bonds(i, hbond_dict):
-    keys = ['H_intra', 'H_inter', 'acc_intra', 'acc_inter', 'don_intra', 'don_inter']
-    vec = np.zeros(len(keys))
-    for j in range(len(keys)):
-        if i in hbond_dict[keys[j]]:
-            vec[j] += 1
+def get_atomic_rdf(atom: Atom,
+                   mol: Mol,
+                   xyz: npt.NDArray[np.float64],
+                   nout: int = 100,
+                   smth: int = 1600,
+                   max_r: float = 3.0,
+                   decay_width: float = 2.0,
+                   decay_pos: float = 6.0) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
 
-    return vec
-
-
-def get_atomic_cdf(atom: Chem.Atom, mol: Chem.Mol, charges, xyz, nout=100, smth=3200, min_p=-1.8, max_p=4.6):
-    p = np.linspace(min_p, max_p, num=nout)
-    g = []
-    atom_id = atom.GetIdx()
-
-    #     for nb in atom.GetNeighbors():
-    for nb in mol.GetAtoms():
-        nid = nb.GetIdx()
-        d_ij = xyz[atom_id][nid]
-        if nid == atom_id:
-            continue
-        if d_ij > 3:
-            continue
-
-        gs = np.array(np.exp(-smth * (1 / d_ij ** 2) * (p - (charges[atom_id] - charges[nid])) ** 2))
-        g.append(gs)
-
-    g = np.sum(g, axis=0)
-
-    return p, g
-
-
-def get_atomic_rdf(atom: Chem.Atom, mol: Chem.Mol, xyz, nout=100, smth=1600, max_r=3, decay_width=2, decay_pos=6):
     r = np.linspace(0.8, max_r, num=nout)
     w = 1.0 - 1.0 / (1.0 + np.exp(-decay_width * (r - decay_pos)))
     atom_mass = atom.GetMass()

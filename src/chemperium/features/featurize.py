@@ -1,10 +1,17 @@
 from chemperium.inp import InputArguments
 from rdkit.Chem import Descriptors, rdmolops
-from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdchem import Mol, Atom, Bond
 from chemperium.features.calc_features import *
+from chemperium.data.load_test_data import TestInputArguments
+import numpy as np
+import numpy.typing as npt
+from typing import Union
 
 
-def get_atomic_features(atom: Chem.Atom, mol: Chem.Mol, hbond_dict: dict, xyz, input_pars: InputArguments):
+def get_atomic_features(atom: Atom,
+                        mol: Mol,
+                        xyz: npt.NDArray[np.float64],
+                        input_pars: Union[InputArguments, TestInputArguments]) -> npt.NDArray[np.float64]:
     feat_list = np.array([])
 
     if input_pars.rdf:
@@ -41,7 +48,7 @@ def get_atomic_features(atom: Chem.Atom, mol: Chem.Mol, hbond_dict: dict, xyz, i
     return feat_list
 
 
-def get_bond_features(bond: Chem.Bond):
+def get_bond_features(bond: Bond) -> npt.NDArray[np.float64]:
     feat_list = np.array([])
     feat_list = np.append(feat_list, bond_type_vector(bond.GetBondTypeAsDouble()))
     feat_list = np.append(feat_list, np.array([bond.IsInRing()]))
@@ -50,7 +57,8 @@ def get_bond_features(bond: Chem.Bond):
     return feat_list
 
 
-def get_molecular_features(mol: Mol, spin: int = None):
+def get_molecular_features(mol: Mol,
+                           spin: Union[int, None] = None) -> npt.NDArray[np.float64]:
 
     # molecular weight
     mw = Descriptors.MolWt(mol)
