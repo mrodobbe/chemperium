@@ -1,13 +1,19 @@
 from chemperium.data.load_test_data import load_models, TestInputArguments, read_csv
 from chemperium.data.load_data import DataLoader
 from chemperium.molecule.batch import prepare_batch
-from typing import Union
+from typing import Union, List, Tuple
 import numpy as np
-from tensorflow.keras.models import Model
+import numpy.typing as npt
+from keras.models import Model
 
 
 class Representation:
-    def __init__(self, data_location: Union[str, None] = None):
+    """
+    This class creates a learned fingerprint for organic molecules.
+    Currently, the only available fingerprint is pretrained on the COSMO-RS properties in ReagLib20 and DrugLib36.
+    """
+    def __init__(self,
+                 data_location: Union[str, None] = None):
 
         self.inputs = TestInputArguments("2d")
 
@@ -36,7 +42,13 @@ class Representation:
             self.inputs.save_dir = data_location + f"/caesar-data/cosmo/2d"
         self.models, self.scaler = load_models(self.inputs)
 
-    def predict(self, smiles: Union[str, list]):
+    def predict(self,
+                smiles: Union[str, List[str]]) -> Tuple[npt.NDArray[np.str_], npt.NDArray[np.float64]]:
+        """
+        Create a learned fingerprint with the predict function
+        :param smiles: A SMILES or a list of SMILES of the target molecule(s)
+        :return: Returns a tuple with the parsed SMILES and their respective fingerprints
+        """
         if type(smiles) is str:
             df_out = read_csv(self.inputs, smiles=[smiles])
         elif type(smiles) is list:
