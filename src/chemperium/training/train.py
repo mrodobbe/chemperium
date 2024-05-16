@@ -27,7 +27,7 @@ def train(input_file: str,
     if type(prop) is str:
         prop = prop.split(",")
 
-    setattr(inputs, "prop", prop)
+    setattr(inputs, "property", prop)
     setattr(inputs, "save_dir", save_dir)
 
     if inputs.transfer_file is not None:

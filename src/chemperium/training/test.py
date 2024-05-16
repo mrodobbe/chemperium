@@ -34,7 +34,7 @@ def test(smiles: List[str],
 
     inputs.test = True
 
-    setattr(inputs, "prop", prop)
+    setattr(inputs, "property", prop)
     setattr(inputs, "save_dir", save_dir)
 
     df = read_csv(inputs, smiles=smiles, xyz_list=xyz)
