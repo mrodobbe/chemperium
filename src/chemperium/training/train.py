@@ -1,5 +1,5 @@
 from typing import Union, List, Dict, Any
-from chemperium.inp import InputArguments
+from chemperium.data.load_test_data import TestInputArguments
 from chemperium.data.load_data import DataLoader, input_checker
 from chemperium.training.run import run_training, run_transfer
 
@@ -17,7 +17,9 @@ def train(input_file: str,
     :return:
     """
 
-    inputs = InputArguments()
+    inputs = TestInputArguments()
+    inputs.test = False
+    inputs.ensemble = False
     setattr(inputs, "input_file", input_file)
 
     if input_args is not None:
@@ -30,10 +32,10 @@ def train(input_file: str,
     setattr(inputs, "property", prop)
     setattr(inputs, "save_dir", save_dir)
 
-    if inputs.transfer_file is not None:
+    if inputs.transfer_file is not "":
         inputs.transfer = True
 
-    if inputs.test_file is not None:
+    if inputs.test_file is not "":
         inputs.test = True
 
     if inputs.outer_folds > 1:

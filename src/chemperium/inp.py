@@ -5,9 +5,9 @@ import os.path as path
 class ArgParser:
     def __init__(self) -> None:
         self.parser = argparse.ArgumentParser(description="Train the 3D MPNN")
-        self.parser.add_argument("--save_dir", type=str, help="Folder to store results")
-        self.parser.add_argument("--property", type=str, help="Target property/ies")
-        self.parser.add_argument("--data", type=str, help="Choose dataset")
+        self.parser.add_argument("--save_dir", type=str, help="Folder to store results", default="Results")
+        self.parser.add_argument("--property", type=str, help="Target property/ies", default="magic-property")
+        self.parser.add_argument("--data", type=str, help="Choose dataset", default="../../test_data/test_example.csv")
 
         self.parser.add_argument("--test_data", type=str, help="Choose external test data")
         self.parser.add_argument("--transfer_data", type=str, help="Choose transfer data")

@@ -3,7 +3,7 @@ from typing import Union, List, Dict, Any
 import pandas as pd
 from chemperium.inp import InputArguments
 from chemperium.data.load_data import DataLoader
-from chemperium.data.load_test_data import read_csv, load_models
+from chemperium.data.load_test_data import read_csv, load_models, TestInputArguments
 from chemperium.training.run import test_external_dataset
 
 
@@ -23,7 +23,8 @@ def test(smiles: List[str],
     :return:
     """
 
-    inputs = InputArguments(training_type="test")
+    inputs = TestInputArguments()
+    inputs.training_type = "test"
 
     if input_args is not None:
         for key, value in input_args.items():

@@ -16,10 +16,13 @@ from chemperium.model.mpnn import MessagePassing, Readout, DirectedEdgeMessage, 
 
 
 class TestInputArguments:
-    def __init__(self, dimension: str):
+    def __init__(self, dimension: Union[None, str] = None):
         self.training_type = "test"  # training or test
+        self.data_type = "molecules"
         self.transfer = False
+        self.locked_transfer = True
         self.test = True
+        self.store_models = False
         self.dir = path.abspath(path.join(path.dirname(path.abspath(__file__)), "../../.."))
         self.mean_readout = True
         self.scaler = True
@@ -34,29 +37,65 @@ class TestInputArguments:
         self.store_models = False
         self.transfer_property = [""]
         self.save_dl = False
+        self.seed = 210995
+        self.include_3d = True
+        self.charge = False
+        self.rdf = False
+        self.cdf = False
+        self.mfd = False
+        self.simple_features = False
+        self.num_layers = 5
+        self.hidden_size = 512
+        self.activation = "LeakyReLU"
+        self.dropout = 0.0
+        self.bias = True
+        self.max_epochs = 700
+        self.patience = 50
+        self.transfer_patience = 20
+        self.batch_size = 16
+        self.transfer_batch = 8
+        self.ratio = (0.8, 0.1, 0.1)
+        self.init_lr = 1e-3
+        self.clipvalue = 0.1
+        self.decay_rate = 0.95
+        self.cutoff = 2.1
+        self.hidden_message = 512
+        self.depth = 6
+        self.representation_size = 256
+        self.outer_folds = 1
 
-        if dimension == "2d":
-            self.include_3d = False
-            self.simple_features = True
-            self.mean_readout = True
-            self.rdf = False
-            self.cdf = False
-            self.scaler = True
-            self.ensemble = True
-            self.ff_3d = False
-            self.no_hydrogens = False
-            self.gasteiger = False
-            self.charge = False
-            self.property = [""]
-            self.save_dir = ""
-            self.mfd = False
+        # Plotting
 
-        else:
-            self.include_3d = True
-            self.simple_features = False
-            self.rdf = True
-            self.mfd = True
-            self.cutoff = 2.1
+        self.color_1 = "#0F4C81"  # Pantone Classic Blue
+        self.color_2 = "#EA733D"  # Pantone Red 032 C
+        self.color_3 = "#D01C1F"  # Pantone Fiery Red
+        self.font = "Arial"
+        self.font_size = 24
+
+        if dimension is not None:
+
+            if dimension == "2d":
+                self.include_3d = False
+                self.simple_features = True
+                self.mean_readout = True
+                self.rdf = False
+                self.cdf = False
+                self.scaler = True
+                self.ensemble = True
+                self.ff_3d = False
+                self.no_hydrogens = False
+                self.gasteiger = False
+                self.charge = False
+                self.property = [""]
+                self.save_dir = ""
+                self.mfd = False
+
+            else:
+                self.include_3d = True
+                self.simple_features = False
+                self.rdf = True
+                self.mfd = True
+                self.cutoff = 2.1
 
 
 def read_csv(inp: Union[TestInputArguments, InputArguments],

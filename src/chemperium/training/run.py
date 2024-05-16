@@ -23,7 +23,7 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
               y: npt.NDArray[np.float64],
               train_indices: npt.NDArray[np.int64],
               validation_indices: npt.NDArray[np.int64],
-              inp: InputArguments,
+              inp: Union[InputArguments, TestInputArguments],
               model: Union[None, Model] = None) -> Model:
     """
     This function trains an individual message-passing neural network.
@@ -94,7 +94,7 @@ def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
                       tf.RaggedTensor, tf.RaggedTensor],
              y: npt.NDArray[np.float64],
              model_indices: npt.NDArray[np.int64],
-             inp: InputArguments,
+             inp: Union[InputArguments, TestInputArguments],
              pretrained_models: Union[None, List[Model]] = None) -> List[Model]:
     """
     This function trains an ensemble of message-passing neural networks.
@@ -127,7 +127,7 @@ def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
 
 
 def run_training(dl: DataLoader,
-                 inp: InputArguments,
+                 inp: Union[InputArguments, TestInputArguments],
                  return_models: bool = False,
                  pretrained_models: Union[None, List[Model], Model] = None) -> Union[List[Model], Model, None]:
     """
@@ -179,13 +179,13 @@ def run_training(dl: DataLoader,
 
 
 def run_pretraining(dl: DataLoader,
-                    inp: InputArguments) -> Union[List[Model], Model]:
+                    inp: Union[InputArguments, TestInputArguments]) -> Union[List[Model], Model]:
     models = run_training(dl, inp, True, None)
     return models
 
 
 def run_transfer(dl_large: DataLoader,
-                 inp: InputArguments) -> None:
+                 inp: Union[InputArguments, TestInputArguments]) -> None:
     """
     This function performs transfer learning.
     :param dl_large: DataLoader containing the pre-training data
