@@ -12,7 +12,7 @@ Chemperium is built upon NumPy, Pandas, RDKit, TensorFlow, Keras, and Scikit-Lea
 The package can be installed using pip:
 
 Install a virtual environment in Anaconda:
-```console
+```
 conda create -n chemperium python=3.11
 conda activate chemperium
 ```
@@ -36,7 +36,7 @@ and the location of the trained models.
 
     <br>*2D example for boiling point*<br> 
 
-    ```console
+    ```
     import chemperium as cp
     
     bp_model = cp.Liquid("bp", "2d", <folder>)
@@ -53,7 +53,7 @@ At this moment, all predictions are in `kcal/mol` for enthalpy and `cal/mol/K` f
 
     <br>*3D example for CBS-QB3*<br> 
 
-    ```console
+    ```
     import chemperium as cp
   
     smi = "COc1ccccc1"
@@ -98,7 +98,7 @@ a list with target properties, and (optionally) a dictionary with training argum
 <br><br>
 *Training a 3D MPNN for prediction of logP and logS*:
 
-```console
+```
 import chemperium as cp
 
 csv_location = "examples/example_data.csv"
