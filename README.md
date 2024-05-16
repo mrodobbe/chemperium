@@ -206,7 +206,7 @@ Add citation here!
 ## Acknowledgments
 This software tool has been developed with support from the Research Fund of Flanders (FWO-Vlaanderen, grant 1S45522N), 
 the European Research Council (ERC grant 818607), and the European Union's Horizon Programme (grant 101057816, 
-"TransPharm").
+"[TransPharm](https://transforming-pharma.eu/)").
 
 
 <img src="misc/fwo.png" alt="fwo" height="50"/> <br> <br>
