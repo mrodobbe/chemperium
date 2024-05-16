@@ -1,7 +1,7 @@
-from src.chemperium import InputArguments
-from src.chemperium import DataLoader
-from src.chemperium.data.load_test_data import read_csv, load_models
-from src.chemperium.training.run import test_external_dataset
+from chemperium.inp import InputArguments
+from chemperium.data.load_data import DataLoader
+from chemperium.data.load_test_data import read_csv, load_models
+from chemperium.training.run import test_external_dataset
 
 
 if __name__ == "__main__":
