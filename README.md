@@ -17,8 +17,11 @@ to make reliable molecular property predictions with a minimum of code and time.
   * [Testing Models](#testing-trained-machine-learning-models)
   * [Representation Learning](#creating-a-learned-representation)
 - [Scripts](#3-scripts)
-- [Datasets](#4-datasets)
-- [Reference](#5-reference)
+  * [Command-Line Training](#training-a-model-via-command-line)
+  * [Command-Line Testing](#testing-a-model-via-command-line)
+- [Tutorial](#4-scripts)
+- [Datasets](#5-datasets)
+- [Reference](#6-reference)
 
 ## 1. Installation
 Chemperium is built upon NumPy, Pandas, RDKit, TensorFlow, Keras, and Scikit-Learn. 
@@ -176,18 +179,29 @@ results = cp.test(smi, props, save_dir, xyz, True, input_args)
 
 
 ## 3. Scripts
-
+It is also possible to train and test models via command line. Below, we show the example from 
+[Training](#training-machine-learning-models) and [Testing](#testing-trained-machine-learning-models).
 ### Training a model via command line
-
+The script can be found in scripts/train.py.
+```
+python train.py --data "examples/example_data.csv" --save_dir "examples/output" --property "logp,logs" 
+--rdf --cutoff 2.1 --num_layers 3 --hidden_size 128 --depth 4
+```
 
 ### Testing a model via command line
+```
+python test.py --test_data "examples/example_test_data.csv" --save_dir "examples/output" --property "logp,logs" 
+--rdf --cutoff 2.1 --num_layers 3 --hidden_size 128 --depth 4
+```
 
+## 4. Tutorial
+Add link to demo here!
 
-## 4. Datasets
+## 5. Datasets
+Add link to Zenodo here!
 
-
-## 5. Reference
-
+## 6. Reference
+Add citation here!
 
 ## Acknowledgments
 This software tool has been developed with support from the Research Fund of Flanders (FWO-Vlaanderen, grant 1S45522N), 
