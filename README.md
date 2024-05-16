@@ -196,4 +196,4 @@ the European Research Council (ERC grant 818607), and the European Union's Horiz
 
 
 <img src="misc/fwo.png" alt="fwo" width="50%"/>
-<img src="misc/transpharm.png" alt="transpharm" height="20%"/>
+<img src="misc/transpharm.png" alt="transpharm" width="10%"/>
