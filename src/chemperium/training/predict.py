@@ -105,7 +105,7 @@ class Thermo:
 
             nasa_coefficients = get_nasa_coefficients(temperatures, h298=h298, s298=s298, cp_values=cp)
             a1, a2, a3, a4, a5, a6, a7 = nasa_coefficients.T
-            h = enthalpy_fit(t, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
+            h = 1 / 1000 * enthalpy_fit(t, a1, a2, a3, a4, a5, a6) * 8.314 / 4.184
             df_output = df_pred[["smiles"]].copy()
             df_output[f"H{t_c}_prediction"] = h
             df_output[f"H{t_c}_uncertainty"] = unc

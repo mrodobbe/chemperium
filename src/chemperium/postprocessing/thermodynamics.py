@@ -56,7 +56,7 @@ def get_nasa_coefficients(temperatures: Union[npt.NDArray[np.float64], float],
                           s298: Union[npt.NDArray[np.float64]],
                           cp_values: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     a1, a2, a3, a4, a5 = get_cp_coefficients(temperatures, cp_values * (4.184 / 8.314))
-    a6 = h298 * (4.184 / 8.314) - enthalpy_fit(298.15, a1, a2, a3, a4, a5, 0)
+    a6 = h298 * (4.184 / 8.314) * 1000 - enthalpy_fit(298.15, a1, a2, a3, a4, a5, 0)
     a7 = s298 * (4.184 / 8.314) - entropy_fit(298.15, a1, a2, a3, a4, a5, 0)
     if len(cp_values.shape) > 1:
         return np.array([a1, a2, a3, a4, a5, a6, a7]).T
