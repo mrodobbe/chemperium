@@ -37,7 +37,7 @@ class Representation:
 
         self.inputs.ensemble = False
         if data_location is None:
-            self.inputs.save_dir = self.inputs.dir + f"/caesar-data/cosmo/2d"
+            self.inputs.save_dir = self.inputs.dir + f"/cosmo/2d"
         else:
             self.inputs.save_dir = data_location + f"/caesar-data/cosmo/2d"
         self.models, self.scaler = load_models(self.inputs)
