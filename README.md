@@ -195,10 +195,10 @@ python test.py --test_data "examples/example_test_data.csv" --save_dir "examples
 ```
 
 ## 4. Tutorial
-Add link to demo here!
+A small demo notebook is available in `notebooks/demo.ipynb`.
 
 ## 5. Datasets
-Add link to Zenodo here!
+All datasets are available in the [Zenodo repository](https://www.doi.org/10.5281/zenodo.11409710).
 
 ## 6. Reference
 Add citation here!
