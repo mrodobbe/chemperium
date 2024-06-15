@@ -1,3 +1,4 @@
+![Coverage Status](coverage-badge.svg)
 # Chemperium
 *Portmanteau of the Latin words Chemia and Imperium: "a chemical empire"*. <br><br>
 Chemperium is a deep learning toolkit that aims to conquer the chemical space of compounds and properties. 
@@ -19,7 +20,7 @@ to make reliable molecular property predictions with a minimum of code and time.
 - [Scripts](#3-scripts)
   * [Command-Line Training](#training-a-model-via-command-line)
   * [Command-Line Testing](#testing-a-model-via-command-line)
-- [Tutorial](#4-scripts)
+- [Tutorial](#4-tutorial)
 - [Datasets](#5-datasets)
 - [Reference](#6-reference)
 
@@ -201,7 +202,21 @@ A small demo notebook is available in `notebooks/demo.ipynb`.
 All datasets are available in the [Zenodo repository](https://www.doi.org/10.5281/zenodo.11409710).
 
 ## 6. Reference
-Add citation here!
+When using chemperium for your own work, please refer to the original publication: <br>
+`M. R. Dobbelaere, I. Lengyel, C. V. Stevens, and K. M. Van Geem, 
+Geometric Deep Learning for Molecular Property Predictions with Chemical Accuracy Across Chemical Space, 
+Submitted, 2024.`
+
+```
+@ARTICLE{Dobbelaere2024,
+  title     = "Geometric Deep Learning for Molecular Property Predictions with Chemical Accuracy Across Chemical Space",
+  author    = "Dobbelaere, Maarten R and Lengyel, Istvan and Stevens,
+               Christian V and Van Geem, Kevin M",
+  journal   = "Submitted",
+  year      =  2024,
+  language  = "en"
+}
+```
 
 ## Acknowledgments
 This software tool has been developed with support from the Research Fund of Flanders (FWO-Vlaanderen, grant 1S45522N), 
