@@ -9,6 +9,7 @@ from chemperium.molecule.batch import MPNNDataset, prepare_batch
 from sklearn.model_selection import KFold
 from keras.callbacks import EarlyStopping
 from keras.models import Model
+from keras.losses import BinaryCrossentropy, CategoricalCrossentropy
 from chemperium.training.evaluate import *
 import gc
 from typing import Union, List, Tuple
@@ -55,20 +56,58 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
     # print(f"Shape of H-bond features: {x_valp[2].shape}")
 
     if model is None:
-        mpnn = MPNN(x_valp[0][0].shape[1], x_valp[1][0].shape[1], output_shape,
-                    hidden_message=inp.hidden_message,
-                    representation_size=inp.representation_size, depth=inp.depth, hidden_size=inp.hidden_size,
-                    layers=inp.num_layers, include_3d=inp.include_3d, mean_readout=inp.mean_readout, mfd=inp.mfd,
-                    seed=inp.seed)
+        mpnn = MPNN(
+            x_valp[0][0].shape[1],
+            x_valp[1][0].shape[1],
+            output_shape,
+            hidden_message=inp.hidden_message,
+            representation_size=inp.representation_size,
+            depth=inp.depth,
+            hidden_size=inp.hidden_size,
+            layers=inp.num_layers,
+            include_3d=inp.include_3d,
+            mean_readout=inp.mean_readout,
+            mfd=inp.mfd,
+            seed=inp.seed,
+            activation=inp.activation,
+            dropout=inp.dropout,
+            batch_normalization=inp.batch_normalization,
+            l2_value=inp.l2
+        )
+
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             inp.init_lr,
-            decay_steps=10000,
+            decay_steps=inp.decay_steps,
             decay_rate=inp.decay_rate,
-            staircase=True)
+            staircase=True
+        )
+
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipvalue=inp.clipvalue)
 
-        mpnn.compile(loss='mean_squared_error', optimizer=optimizer,
-                     metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
+        if inp.activation == "linear":
+            mpnn.compile(
+                loss='mean_squared_error',
+                optimizer=optimizer,
+                metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
+            )
+        elif inp.activation == "softmax":
+            mpnn.compile(
+                optimizer=optimizer,
+                loss=CategoricalCrossentropy(from_logits=False),
+                metrics=['categorical_accuracy']
+            )
+        elif inp.activation == "sigmoid":
+            mpnn.compile(
+                optimizer=optimizer,
+                loss=BinaryCrossentropy(from_logits=False),
+                metrics=['binary_accuracy', 'AUC']
+            )
+        else:
+            mpnn.compile(
+                loss='mean_squared_error',
+                optimizer=optimizer,
+                metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
+            )
     else:
         mpnn = model
 

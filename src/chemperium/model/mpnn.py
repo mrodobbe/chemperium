@@ -1,6 +1,7 @@
-from keras.layers import Layer
+from keras.layers import Layer, Dropout, BatchNormalization
 from keras.models import Model
 from keras.layers import Dense, Input, LeakyReLU, Concatenate
+from keras.regularizers import l2
 import tensorflow as tf
 from chemperium.inp import InputArguments
 # mypy: allow-untyped-defs
@@ -239,19 +240,25 @@ class Readout(Layer):  # type: ignore[misc]
         return h_molecule
 
 
-def MPNN(d_atoms: int,
-         d_bonds: int,
-         d_out: int,
-         hidden_message: int = 64,
-         depth: int = 4,
-         representation_size: int = 256,
-         hidden_size: int = 512,
-         layers: int = 5,
-         include_3d: bool = True,
-         mean_readout: bool = False,
-         mfd: bool = False,
-         mfd_size: int = 64,
-         seed: int = 210995) -> tf.keras.Model:
+def MPNN(
+        d_atoms: int,
+        d_bonds: int,
+        d_out: int,
+        hidden_message: int = 64,
+        depth: int = 4,
+        representation_size: int = 256,
+        hidden_size: int = 512,
+        layers: int = 5,
+        include_3d: bool = True,
+        mean_readout: bool = False,
+        mfd: bool = False,
+        mfd_size: int = 64,
+        seed: int = 210995,
+        activation: str = "linear",
+        dropout: float = 0.0,
+        batch_normalization: bool = False,
+        l2_value: float = 0.0
+) -> tf.keras.Model:
     tf.keras.utils.set_random_seed(seed)
     atom_features = Input(shape=[100, d_atoms], dtype="float32", name="initial_atom_features")
     bond_features = Input(shape=[250, d_bonds], dtype="float32", name="initial_bond_features")
@@ -279,11 +286,12 @@ def MPNN(d_atoms: int,
         x = Concatenate()([x, mx])
 
     for layer in range(layers):
-        x = Dense(hidden_size)(x)
+        x = Dense(hidden_size, kernel_regularizer=l2(l2_value))(x)
+        x = BatchNormalization()(x) if batch_normalization else x  # Batch Normalization
         x = LeakyReLU()(x)
-    #     x = Dense(hidden_size, activation="relu")(x)
+        x = Dropout(dropout)(x) if dropout > 0 else x  # Dropout Layer
 
-    x = Dense(d_out, activation="linear")(x)
+    x = Dense(d_out, activation=activation)(x)
 
     model = Model(inputs=[atom_features, bond_features, bond_pairs, xyz,
                           bond_neighbors, atom_neighbors, atom_bond_neighbors, molecular_features], outputs=[x])

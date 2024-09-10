@@ -12,6 +12,7 @@ class ArgParser:
         self.parser.add_argument("--test_data", type=str, help="Choose external test data")
         self.parser.add_argument("--transfer_data", type=str, help="Choose transfer data")
         self.parser.add_argument("--transfer_property", type=str, help="Choose property to be predicted")
+        self.parser.add_argument("--activation", type=str, help="Choose output activation", default="linear")
 
         self.parser.add_argument("--batch", type=int, help="Choose batch size", default=128)
         self.parser.add_argument("--transfer_batch", type=int, help="Choose batch size for transfer data", default=128)
@@ -31,7 +32,10 @@ class ArgParser:
                                  help="Choose size of learned representation", default=256)
         self.parser.add_argument("--init_lr", type=float, help="Choose initial learning rate", default=1.0e-4)
         self.parser.add_argument("--decay", type=float, help="Choose decay rate", default=0.95)
+        self.parser.add_argument("--decay_steps", type=int, help="Choose decay steps", default=10000)
         self.parser.add_argument("--dropout", type=float, help="Choose dropout rate", default=0.0)
+        self.parser.add_argument("--l2", type=float, help="Choose L2 regularization value", default=0.0)
+        self.parser.add_argument("--batch_normalization", action='store_true', help="Add batch normalization layer")
         self.parser.add_argument("--clip", type=float, help="Choose gradient clipping value", default=0.1)
         self.parser.add_argument("--cutoff", type=float, help="Choose cutoff distance", default=None)
         self.parser.add_argument("--ratio", type=float, help="Choose train:val:test ratio", default=None, nargs="+")
@@ -119,8 +123,10 @@ class InputArguments:
 
         self.num_layers = args.num_layers
         self.hidden_size = args.hidden_size
-        self.activation = "LeakyReLU"
+        self.activation = args.activation
         self.dropout = args.dropout
+        self.batch_normalization = args.batch_normalization
+        self.l2 = args.l2
         self.bias = args.no_bias
         self.max_epochs = args.epochs  # 1000
         self.patience = args.patience
@@ -136,6 +142,7 @@ class InputArguments:
         self.init_lr = args.init_lr
         self.clipvalue = args.clip
         self.decay_rate = args.decay
+        self.decay_steps = args.decay_steps
         self.cutoff = args.cutoff
         self.hidden_message = args.hidden_message  # 512
         self.depth = args.depth
