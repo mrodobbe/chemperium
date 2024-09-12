@@ -42,6 +42,7 @@ class ArgParser:
 
         self.parser.add_argument("--ensemble", action='store_true', help="Train ensemble")
         self.parser.add_argument("--ff", action='store_true', help="Generate 3D geometries via MMFF94")
+        self.parser.add_argument("--masked", action='store_true', help="Add output mask")
         self.parser.add_argument("--rdf", action='store_true', help="Use RDF in representation")
         self.parser.add_argument("--cdf", action='store_true', help="Use CDF in representation")
         self.parser.add_argument("--mfd", action='store_true', help="Use MFD in representation")
@@ -151,6 +152,7 @@ class InputArguments:
         self.ensemble = args.ensemble
         self.outer_folds = args.folds
         self.inner_folds = 9
+        self.masked = args.masked
 
         # Plotting
 

@@ -6,7 +6,6 @@ from chemperium.data.load_test_data import TestInputArguments
 from chemperium.data.load_data import *
 from chemperium.model.mpnn import MPNN
 from chemperium.molecule.batch import MPNNDataset, prepare_batch
-from sklearn.model_selection import KFold
 from keras.callbacks import EarlyStopping
 from keras.models import Model
 from keras.losses import BinaryCrossentropy, CategoricalCrossentropy
@@ -16,6 +15,7 @@ from typing import Union, List, Tuple
 import numpy as np
 import numpy.typing as npt
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import StratifiedKFold, cross_val_score, KFold, RepeatedStratifiedKFold, GridSearchCV
 
 
 def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
@@ -97,11 +97,18 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
                 metrics=['categorical_accuracy']
             )
         elif inp.activation == "sigmoid":
-            mpnn.compile(
-                optimizer=optimizer,
-                loss=BinaryCrossentropy(from_logits=False),
-                metrics=['binary_accuracy', 'AUC']
-            )
+            if inp.masked:
+                mpnn.compile(
+                    optimizer=optimizer,
+                    loss=masked_binary_crossentropy,
+                    metrics=['binary_accuracy', 'AUC']
+                )
+            else:
+                mpnn.compile(
+                    optimizer=optimizer,
+                    loss=BinaryCrossentropy(from_logits=False),
+                    metrics=['binary_accuracy', 'AUC']
+                )
         else:
             mpnn.compile(
                 loss='mean_squared_error',
@@ -163,6 +170,10 @@ def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
         models.append(mpnn)
 
     return models
+
+
+def hyperparameter_optimization():
+    pass
 
 
 def run_training(dl: DataLoader,
@@ -296,3 +307,23 @@ def test_external_dataset(models: Union[Model, List[Model]],
             return None
         else:
             return df_pred
+
+
+def masked_binary_crossentropy(y_true, y_pred):
+    # Initialize the binary cross-entropy object
+    bce = BinaryCrossentropy(from_logits=False)
+
+    # Create a mask where valid labels are (not NaN)
+    mask = tf.cast(~tf.math.is_nan(y_true), tf.float32)  # 1 if y_true is not NaN, 0 otherwise
+
+    # Replace NaN values in y_true with zeros to avoid computation issues
+    y_true = tf.where(tf.math.is_nan(y_true), tf.zeros_like(y_true), y_true)
+
+    # Calculate the standard binary cross-entropy loss
+    loss = bce(y_true, y_pred)
+
+    # Apply the mask to the computed loss
+    masked_loss = loss * mask
+
+    # Compute the mean loss over the batch, considering only non-masked entries
+    return tf.reduce_sum(masked_loss) / tf.reduce_sum(mask)
