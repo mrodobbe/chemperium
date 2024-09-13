@@ -8,7 +8,7 @@ from chemperium.model.mpnn import MPNN
 from chemperium.molecule.batch import MPNNDataset, prepare_batch
 from keras.callbacks import EarlyStopping
 from keras.models import Model
-from keras.losses import BinaryCrossentropy, CategoricalCrossentropy
+from keras.losses import BinaryCrossentropy, CategoricalCrossentropy, mean_squared_error
 from chemperium.training.evaluate import *
 import gc
 from typing import Union, List, Tuple
@@ -85,11 +85,18 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipvalue=inp.clipvalue)
 
         if inp.activation == "linear":
-            mpnn.compile(
-                loss='mean_squared_error',
-                optimizer=optimizer,
-                metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
-            )
+            if inp.masked:
+                mpnn.compile(
+                    loss=masked_mean_squared_error,
+                    optimizer=optimizer,
+                    metrics=[masked_mean_absolute_error, 'mean_absolute_percentage_error']
+                )
+            else:
+                mpnn.compile(
+                    loss='mean_squared_error',
+                    optimizer=optimizer,
+                    metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
+                )
         elif inp.activation == "softmax":
             mpnn.compile(
                 optimizer=optimizer,
@@ -310,20 +317,21 @@ def test_external_dataset(models: Union[Model, List[Model]],
 
 
 def masked_binary_crossentropy(y_true, y_pred):
-    # Initialize the binary cross-entropy object
-    bce = BinaryCrossentropy(from_logits=False)
+    mask = ~tf.math.is_nan(y_true)  # Create a mask where True if y_true is not NaN
+    masked_y_true = tf.boolean_mask(y_true, mask)  # Apply mask to ground truth
+    masked_y_pred = tf.boolean_mask(y_pred, mask)  # Apply mask to predictions
+    return tf.reduce_mean(BinaryCrossentropy(masked_y_true - masked_y_pred))  # Compute MSE
 
-    # Create a mask where valid labels are (not NaN)
-    mask = tf.cast(~tf.math.is_nan(y_true), tf.float32)  # 1 if y_true is not NaN, 0 otherwise
 
-    # Replace NaN values in y_true with zeros to avoid computation issues
-    y_true = tf.where(tf.math.is_nan(y_true), tf.zeros_like(y_true), y_true)
+def masked_mean_squared_error(y_true, y_pred):
+    mask = ~tf.math.is_nan(y_true)  # Create a mask where True if y_true is not NaN
+    masked_y_true = tf.boolean_mask(y_true, mask)  # Apply mask to ground truth
+    masked_y_pred = tf.boolean_mask(y_pred, mask)  # Apply mask to predictions
+    return tf.reduce_mean(tf.square(masked_y_true - masked_y_pred))  # Compute MSE
 
-    # Calculate the standard binary cross-entropy loss
-    loss = bce(y_true, y_pred)
 
-    # Apply the mask to the computed loss
-    masked_loss = loss * mask
-
-    # Compute the mean loss over the batch, considering only non-masked entries
-    return tf.reduce_sum(masked_loss) / tf.reduce_sum(mask)
+def masked_mean_absolute_error(y_true, y_pred):
+    mask = ~tf.math.is_nan(y_true)
+    masked_y_true = tf.boolean_mask(y_true, mask)
+    masked_y_pred = tf.boolean_mask(y_pred, mask)
+    return tf.reduce_mean(tf.abs(masked_y_true - masked_y_pred))
