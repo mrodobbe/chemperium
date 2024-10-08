@@ -68,7 +68,7 @@ def create_z_matrix(m: MolecularGraph3D) -> str:
 
         if i > 2:
             found = False
-            found_quartet = None
+            found_quartet = {}
             for l in range(len(atomneighbors[i])):
                 nb_i = atomneighbors[i][l]
                 if nb_i > i:
