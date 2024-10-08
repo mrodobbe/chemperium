@@ -5,6 +5,9 @@ from chemperium.data.load_test_data import TestInputArguments
 from chemperium.inp import InputArguments
 from chemperium.molecule.graph import Mol3DGraph
 from chemperium.molecule.batch import featurize_graphs
+from chemperium.gaussian.feature_vector import Featurizer, MolFeatureVector
+from chemperium.gaussian.histogram import Histograms, Gaussian
+from chemperium.features.fingerprint import RDF, Morgan, MACCS
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdchem import Mol
@@ -46,9 +49,15 @@ class DataLoader:
             self.df = df
         self.rdmol_list = np.array(self.get_rdmol())
         self.smiles = self.get_smiles()
-        self.graphs = self.get_graphs()
         self.scaler = self.get_scaler()
-        self.x = self.get_xs()
+
+        if self.inp.fingerprint is None:
+            self.graphs = self.get_graphs()
+            self.x = self.get_xs()
+        else:
+            self.graphs = []
+            self.x = self.get_fingerprints()
+
         self.y = self.get_outputs(inputs=self.inp)
 
     def load_data(self) -> pd.DataFrame:
@@ -246,17 +255,66 @@ class DataLoader:
 
         return outputs
 
+    def get_fingerprints(self):
+        if self.inp.ff_3d:
+            import_type = "smiles"
+        else:
+            import_type = "precalculated"
 
-def input_checker(save_dir: str) -> None:
+        fingerprints = []
+        if self.inp.fingerprint == "hdad":
+            features = Featurizer(self.rdmol_list, import_type, self.inp)
+            try:
+                with open(str(self.inp.gmm_file), "rb") as f:
+                    gmm_dict = pickle.load(f)
+            except:
+                hist = Histograms(features.all_features, features.name_all_features, self.inp)
+                geometry_dict = hist.histogram_dict
+                gauss = Gaussian(self.inp)
+                gauss.cluster(geometry_dict)
+                gmm_dict = gauss.gmm_dict
+            for molecule in features.molecules:
+                fp = MolFeatureVector(molecule, gmm_dict, self.inp).vector
+                fingerprints.append(fp)
+        else:
+            for molecule in self.rdmol_list:
+                if self.inp.fingerprint == "rdf":
+                    fp = RDF(molecule).make_fingerprint(add_mfd=self.inp.mfd)
+                elif self.inp.fingerprint == "maccs":
+                    fp = MACCS(molecule).make_fingerprint()
+                elif self.inp.fingerprint == "morgan":
+                    fp = Morgan(molecule).make_fingerprint()
+                else:
+                    raise KeyError(f"Invalid fingerprint: {self.inp.fingerprint}! Choose from rdf, maccs, morgan, hdad")
+                fingerprints.append(fp)
+
+        fingerprints = np.array(fingerprints).astype(np.float32)
+        return fingerprints
+
+
+def input_checker(save_dir: str, gaul: bool = False) -> None:
     """
     Evaluate if save_dir exists
     :param save_dir: Folder to store all data of the training.
+    :param gaul: Whether to use GauL-HDAD so that gmm and hist folders are created.
     :return: Function does not return anything
     """
     try:
         os.mkdir(save_dir)
     except FileExistsError:
         print("Folder already exists. Data in this folder will be overwritten.")
+
+    if gaul:
+        try:
+            os.mkdir(str(save_dir + "/gmm"))
+            print("GMM folder created")
+        except FileExistsError:
+            print("GMM folder already exists.")
+        try:
+            os.mkdir(str(save_dir + "/hist"))
+            print("Hist folder created")
+        except FileExistsError:
+            print("Hist folder already exists.")
 
 
 def split_dataset(num_data: int,

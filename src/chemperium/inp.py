@@ -8,11 +8,14 @@ class ArgParser:
         self.parser.add_argument("--save_dir", type=str, help="Folder to store results", default="Results")
         self.parser.add_argument("--property", type=str, help="Target property/ies", default="magic-property")
         self.parser.add_argument("--data", type=str, help="Choose dataset", default="../../test_data/test_example.csv")
+        self.parser.add_argument("--gmm_file", type=str, help="Choose dataset", default="/pickle/gmm_dictionary.pickle")
+        self.parser.add_argument("--fingerprint", type=str, help="Use non-learned representation")
 
         self.parser.add_argument("--test_data", type=str, help="Choose external test data")
         self.parser.add_argument("--transfer_data", type=str, help="Choose transfer data")
         self.parser.add_argument("--transfer_property", type=str, help="Choose property to be predicted")
         self.parser.add_argument("--activation", type=str, help="Choose output activation", default="linear")
+        self.parser.add_argument("--hidden_activation", type=str, help="Choose output activation", default="LeakyReLU")
 
         self.parser.add_argument("--batch", type=int, help="Choose batch size", default=128)
         self.parser.add_argument("--transfer_batch", type=int, help="Choose batch size for transfer data", default=128)
@@ -59,6 +62,16 @@ class ArgParser:
         self.parser.add_argument("--locked_transfer", action='store_true', help="Perform locked transfer learning")
         self.parser.add_argument("--store_models", action='store_true', help="Store trained ANNs")
 
+        self.parser.add_argument("--distances", action='store_true', help="Add interatomic distances in GauL-HDAD")
+        self.parser.add_argument("--angles", action='store_true', help="Add bond angles in GauL-HDAD")
+        self.parser.add_argument("--dihedrals", action='store_true', help="Add dihedral angles in GauL-HDAD")
+        self.parser.add_argument("--radicals", action='store_true', help="Add radicals in GauL-HDAD")
+        self.parser.add_argument("--carbenium", action='store_true', help="Add carbenium in GauL-HDAD")
+        self.parser.add_argument("--plot_gmm", action='store_true', help="Plot GMM in GauL-HDAD")
+        self.parser.add_argument("--plot_hist", action='store_true', help="Plot histograms in GauL-HDAD")
+        self.parser.add_argument("--max_iter", type=int, help="Max number of GMM iterations in GauL-HDAD", default=100)
+        self.parser.add_argument("--tol", type=float, help="GMM toleration in GauL-HDAD", default=1e-4)
+
 
 class InputArguments:
     def __init__(self, training_type: str = "train"):
@@ -72,6 +85,7 @@ class InputArguments:
         self.locked_transfer = True
         self.store_models = args.store_models
         self.dir = path.abspath(path.join("__file__", "../../.."))
+        self.gmm_file = args.gmm_file
 
         if training_type == "train":
             self.input_file = args.data
@@ -105,6 +119,11 @@ class InputArguments:
         else:
             self.transfer_property = [args.transfer_property]
 
+        if args.fingerprint is None:
+            self.fingerprint = None
+        else:
+            self.fingerprint = args.fingerprint
+
         self.ff_3d = args.ff
         self.processors = 10
         self.seed = args.seed
@@ -124,6 +143,7 @@ class InputArguments:
 
         self.num_layers = args.num_layers
         self.hidden_size = args.hidden_size
+        self.hidden_activation = args.hidden_activation
         self.activation = args.activation
         self.dropout = args.dropout
         self.batch_normalization = args.batch_normalization
@@ -153,6 +173,17 @@ class InputArguments:
         self.outer_folds = args.folds
         self.inner_folds = 9
         self.masked = args.masked
+
+        # GauL-HDAD
+        self.distances = args.distances
+        self.angles = args.angles
+        self.dihedrals = args.dihedrals
+        self.tol = args.tol
+        self.max_iter = args.max_iter
+        self.plot_gmm = args.plot_gmm
+        self.plot_hist = args.plot_hist
+        self.radicals = args.radicals
+        self.carbenium = args.carbenium
 
         # Plotting
 

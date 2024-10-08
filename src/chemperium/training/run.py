@@ -5,9 +5,10 @@ from chemperium.inp import InputArguments
 from chemperium.data.load_test_data import TestInputArguments
 from chemperium.data.load_data import *
 from chemperium.model.mpnn import MPNN
+from chemperium.model.ffn import NeuralNetwork
 from chemperium.molecule.batch import MPNNDataset, prepare_batch
+from sklearn.model_selection import KFold
 from keras.callbacks import EarlyStopping
-from keras.models import Model
 from keras.losses import BinaryCrossentropy, CategoricalCrossentropy, mean_squared_error
 from chemperium.training.evaluate import *
 import gc
@@ -15,7 +16,38 @@ from typing import Union, List, Tuple
 import numpy as np
 import numpy.typing as npt
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import StratifiedKFold, cross_val_score, KFold, RepeatedStratifiedKFold, GridSearchCV
+
+
+def run_fp_model(
+        x: npt.NDArray[np.float32],
+        y: npt.NDArray[np.float32],
+        train_indices: npt.NDArray[np.int64],
+        validation_indices: npt.NDArray[np.int64],
+        inp: Union[InputArguments, TestInputArguments],
+        model: Union[None, Model] = None
+) -> Model:
+    x_train = x[train_indices]
+    x_val = x[validation_indices]
+
+    y_train = y[train_indices]
+    y_val = y[validation_indices]
+
+    print(f"\nThere are {len(y_train)} training data points.\nThere are {len(y_val)} validation data points.\n")
+
+    if len(y_train.shape) == 1:
+        output_shape = 1
+    else:
+        output_shape = y_train.shape[1]
+
+    if model is None:
+        model = NeuralNetwork(input_size=x.shape[1], output_size=output_shape, inp=inp).model
+        model = compile_model(model=model, inp=inp)
+
+    es = EarlyStopping(patience=inp.patience, restore_best_weights=True, min_delta=0.00001, mode='min')
+    model.summary()
+    hist = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=inp.max_epochs, callbacks=[es], verbose=2)
+
+    return model
 
 
 def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
@@ -74,54 +106,7 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
             batch_normalization=inp.batch_normalization,
             l2_value=inp.l2
         )
-
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            inp.init_lr,
-            decay_steps=inp.decay_steps,
-            decay_rate=inp.decay_rate,
-            staircase=True
-        )
-
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipvalue=inp.clipvalue)
-
-        if inp.activation == "linear":
-            if inp.masked:
-                mpnn.compile(
-                    loss=masked_mean_squared_error,
-                    optimizer=optimizer,
-                    metrics=[masked_mean_absolute_error, 'mean_absolute_percentage_error']
-                )
-            else:
-                mpnn.compile(
-                    loss='mean_squared_error',
-                    optimizer=optimizer,
-                    metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
-                )
-        elif inp.activation == "softmax":
-            mpnn.compile(
-                optimizer=optimizer,
-                loss=CategoricalCrossentropy(from_logits=False),
-                metrics=['categorical_accuracy']
-            )
-        elif inp.activation == "sigmoid":
-            if inp.masked:
-                mpnn.compile(
-                    optimizer=optimizer,
-                    loss=masked_binary_crossentropy,
-                    metrics=['binary_accuracy', 'AUC']
-                )
-            else:
-                mpnn.compile(
-                    optimizer=optimizer,
-                    loss=BinaryCrossentropy(from_logits=False),
-                    metrics=['binary_accuracy', 'AUC']
-                )
-        else:
-            mpnn.compile(
-                loss='mean_squared_error',
-                optimizer=optimizer,
-                metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
-            )
+        mpnn = compile_model(model=mpnn, inp=inp)
     else:
         mpnn = model
 
@@ -142,9 +127,9 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
     return mpnn
 
 
-def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
-                      tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
-                      tf.RaggedTensor, tf.RaggedTensor],
+def ensemble(x: Union[Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                            tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
+                            tf.RaggedTensor, tf.RaggedTensor], npt.NDArray[np.float32]],
              y: npt.NDArray[np.float64],
              model_indices: npt.NDArray[np.int64],
              inp: Union[InputArguments, TestInputArguments],
@@ -168,19 +153,21 @@ def ensemble(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
         train_indices = model_indices[train_ids]
         validation_indices = model_indices[val_ids]
         if pretrained_models is None:
-            mpnn = run_model(x, y, train_indices, validation_indices, inp)
+            if inp.fingerprint is None:
+                mpnn = run_model(x, y, train_indices, validation_indices, inp)
+            else:
+                mpnn = run_fp_model(x, y, train_indices, validation_indices, inp)
         else:
-            mpnn = run_model(x, y, train_indices, validation_indices, inp, pretrained_models[idx])
+            if inp.fingerprint is None:
+                mpnn = run_model(x, y, train_indices, validation_indices, inp, pretrained_models[idx])
+            else:
+                mpnn = run_fp_model(x, y, train_indices, validation_indices, inp, pretrained_models[idx])
         if inp.store_models:
             mpnn.save(f"{inp.save_dir}/model_{idx}.keras")
         idx += 1
         models.append(mpnn)
 
     return models
-
-
-def hyperparameter_optimization():
-    pass
 
 
 def run_training(dl: DataLoader,
@@ -216,9 +203,16 @@ def run_training(dl: DataLoader,
         return None
     else:
         if pretrained_models is None:
-            mpnn = run_model(x, y, train_indices, validation_indices, inp)
+            if inp.fingerprint is None:
+                mpnn = run_model(x, y, train_indices, validation_indices, inp)
+            else:
+                mpnn = run_fp_model(x, y, train_indices, validation_indices, inp)
         else:
-            mpnn = run_model(x, y, train_indices, validation_indices, inp, pretrained_models)
+            if inp.fingerprint is None:
+                mpnn = run_model(x, y, train_indices, validation_indices, inp, pretrained_models)
+            else:
+                mpnn = run_fp_model(x, y, train_indices, validation_indices, inp, pretrained_models)
+
         if inp.store_models:
             mpnn.save(f"{inp.save_dir}/model.keras")
         if inp.ratio[2] != 0.0:
@@ -314,6 +308,58 @@ def test_external_dataset(models: Union[Model, List[Model]],
             return None
         else:
             return df_pred
+
+
+def compile_model(model: Model, inp: Union[InputArguments, TestInputArguments]) -> Model:
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        inp.init_lr,
+        decay_steps=inp.decay_steps,
+        decay_rate=inp.decay_rate,
+        staircase=True
+    )
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipvalue=inp.clipvalue)
+
+    if inp.activation == "linear":
+        if inp.masked:
+            model.compile(
+                loss=masked_mean_squared_error,
+                optimizer=optimizer,
+                metrics=[masked_mean_absolute_error, 'mean_absolute_percentage_error']
+            )
+        else:
+            model.compile(
+                loss='mean_squared_error',
+                optimizer=optimizer,
+                metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
+            )
+    elif inp.activation == "softmax":
+        model.compile(
+            optimizer=optimizer,
+            loss=CategoricalCrossentropy(from_logits=False),
+            metrics=['categorical_accuracy']
+        )
+    elif inp.activation == "sigmoid":
+        if inp.masked:
+            model.compile(
+                optimizer=optimizer,
+                loss=masked_binary_crossentropy,
+                metrics=['binary_accuracy', 'AUC']
+            )
+        else:
+            model.compile(
+                optimizer=optimizer,
+                loss=BinaryCrossentropy(from_logits=False),
+                metrics=['binary_accuracy', 'AUC']
+            )
+    else:
+        model.compile(
+            loss='mean_squared_error',
+            optimizer=optimizer,
+            metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
+        )
+
+    return model
 
 
 def masked_binary_crossentropy(y_true, y_pred):

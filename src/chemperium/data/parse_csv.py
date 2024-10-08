@@ -54,17 +54,28 @@ def df_from_csv(fname: str,
         raise KeyError("No column with SMILES detected in the DataFrame. Please add a column named smiles.")
 
     if include_3d and not ff_3d:
-        if "xyz" not in list(df.keys()) and not ff_3d:
+        if "xyz" not in list(df.keys()) and not ff_3d and "molblock" not in list(df.keys()):
             raise KeyError("XYZ coordinates not provided!")
         if "RDMol" not in df.keys():
             df["RDMol"] = ""
-        for i in df.index:
-            mol = make_3d_mol(df["xyz"][i])
-            if mol is None:
-                print(f"WARNING! Could not parse {df[smiles_key][i]}!")
-                df = df.drop(i)
-            else:
-                df.loc[i, "RDMol"] = mol
+        if "molblock" in list(df.keys()):
+            for i in df.index:
+                mol = Chem.MolFromMolBlock(df["molblock"][i], removeHs=False)
+                if mol is None:
+                    print(f"WARNING! Could not parse {df[smiles_key][i]}!")
+                    df = df.drop(i)
+                else:
+                    df.loc[i, "RDMol"] = mol
+        elif "xyz" in list(df.keys()):
+            for i in df.index:
+                mol = make_3d_mol(df["xyz"][i])
+                if mol is None:
+                    print(f"WARNING! Could not parse {df[smiles_key][i]}!")
+                    df = df.drop(i)
+                else:
+                    df.loc[i, "RDMol"] = mol
+        else:
+            raise KeyError("XYZ coordinates not provided!")
     elif "xyz" not in list(df.keys()):
         df["xyz"] = ""
 

@@ -8,6 +8,26 @@ import numpy.typing as npt
 from typing import Union
 
 
+def get_simple_atomic_features(atom: Atom) -> npt.NDArray[np.float64]:
+    feat_list = np.array([])
+
+    feat_list = np.append(feat_list, atomic_feature_vector(atom.GetAtomicNum()))
+
+    # degree of atom
+    feat_list = np.append(feat_list, one_hot_vector(atom.GetDegree(), 7))
+
+    # hybridization: S, SP, SP2, SP3, SP3D, SP3D2
+    feat_list = np.append(feat_list, hybridization_vector(atom.GetHybridization()))
+
+    # aromaticity: 0 or 1
+    feat_list = np.append(feat_list, np.array([int(atom.GetIsAromatic())]))
+
+    # chiral tag
+    feat_list = np.append(feat_list, one_hot_vector(atom.GetChiralTag(), 9))
+
+    return feat_list
+
+
 def get_atomic_features(atom: Atom,
                         mol: Mol,
                         xyz: npt.NDArray[np.float64],
@@ -31,19 +51,7 @@ def get_atomic_features(atom: Atom,
 
     if input_pars.simple_features:
         # atomic number
-        feat_list = np.append(feat_list, atomic_feature_vector(atom.GetAtomicNum()))
-
-        # degree of atom
-        feat_list = np.append(feat_list, one_hot_vector(atom.GetDegree(), 7))
-
-        # hybridization: S, SP, SP2, SP3, SP3D, SP3D2
-        feat_list = np.append(feat_list, hybridization_vector(atom.GetHybridization()))
-
-        # aromaticity: 0 or 1
-        feat_list = np.append(feat_list, np.array([int(atom.GetIsAromatic())]))
-
-        # chiral tag
-        feat_list = np.append(feat_list, one_hot_vector(atom.GetChiralTag(), 9))
+        feat_list = get_simple_atomic_features(atom)
 
     return feat_list
 

@@ -46,8 +46,11 @@ class TestInputArguments:
         self.simple_features = False
         self.num_layers = 5
         self.hidden_size = 512
-        self.activation = "LeakyReLU"
+        self.hidden_activation = "LeakyReLU"
+        self.activation = "linear"
         self.dropout = 0.0
+        self.batch_normalization = False
+        self.l2 = 0.0
         self.bias = True
         self.max_epochs = 700
         self.patience = 50
@@ -58,11 +61,15 @@ class TestInputArguments:
         self.init_lr = 1e-3
         self.clipvalue = 0.1
         self.decay_rate = 0.95
+        self.decay_steps = 10000
+        self.masked = False
         self.cutoff = 2.1
         self.hidden_message = 512
         self.depth = 6
         self.representation_size = 256
         self.outer_folds = 1
+        self.gmm_file = self.dir + "/src/chemperium/pickle/gmm_dictionary.pickle"
+        self.fingerprint = None
 
         # Plotting
 
@@ -71,6 +78,17 @@ class TestInputArguments:
         self.color_3 = "#D01C1F"  # Pantone Fiery Red
         self.font = "Arial"
         self.font_size = 24
+
+        # GauL-HDAD
+        self.distances = True
+        self.angles = True
+        self.dihedrals = True
+        self.tol = 1e-4
+        self.max_iter = 100
+        self.plot_gmm = False
+        self.plot_hist = True
+        self.radicals = True
+        self.carbenium = False
 
         if dimension is not None:
 

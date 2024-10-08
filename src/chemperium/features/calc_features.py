@@ -1,5 +1,6 @@
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import Descriptors
 from rdkit.Chem.rdchem import Atom, Mol, Bond
 from typing import Dict, Tuple
 import numpy.typing as npt
@@ -375,3 +376,35 @@ def get_atomic_rdf(atom: Atom,
     r = np.array(r).astype(np.float64)
 
     return r, g_array
+
+
+def dict_to_vector(representation_dict):
+    r = []
+    for part in representation_dict:
+        r = np.append(r, representation_dict[part])
+    return np.asarray(r).astype(np.float32)
+
+
+def num_radicals(mol: Chem.rdchem.Mol):
+    return Descriptors.NumRadicalElectrons(mol)
+
+
+def carbenium_degree(mol: Chem.rdchem.Mol):
+
+    # TODO: Add aromatic carbocations
+
+    for atom in mol.GetAtoms():
+        if (atom.GetFormalCharge() == 1) and (atom.GetSymbol() == 'C'):
+            degree = 0
+            for neighbor in atom.GetNeighbors():
+                if neighbor.GetSymbol() == 'C':
+                    degree += 1
+            return degree
+
+
+def remove_atom_mapping(mol: Chem.rdchem.Mol):
+    for atom in mol.GetAtoms():
+        for key in atom.GetPropsAsDict():
+            atom.ClearProp(key)
+
+    return mol
