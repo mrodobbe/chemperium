@@ -17,6 +17,7 @@ dependencies = [
     "tensorflow<=2.15",
     "keras<3.0",
     "scipy",
+    "matplotlib"
 ]
 authors = [
     {name = "Maarten R. Dobbelaere", email = "mrodobbe.dobbelaere@ugent.be"},
