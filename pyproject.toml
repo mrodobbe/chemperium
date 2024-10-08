@@ -14,8 +14,8 @@ dependencies = [
     "scikit-learn",
     "numpy",
     "tqdm",
-    "tensorflow<=2.15",
-    "keras<3.0",
+    "tensorflow",
+    "keras",
     "scipy",
     "matplotlib"
 ]
@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dynamic = ["version"]
 
