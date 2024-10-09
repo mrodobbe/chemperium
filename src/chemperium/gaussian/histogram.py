@@ -3,7 +3,6 @@ from chemperium.gaussian.utils import get_dict
 from chemperium.postprocessing.plots import gmm_plot, histogram_plot
 from chemperium.inp import InputArguments
 import pickle
-from tqdm import tqdm
 import numpy as np
 import numpy.typing as npt
 from typing import Union
@@ -75,7 +74,7 @@ class Histograms:
 
     def make_histograms(self):
         print("Plotting histograms.")
-        for key in tqdm(self.histogram_dict):
+        for key in self.histogram_dict:
             histogram_plot(np.asarray(self.histogram_dict[key]).astype(np.float32), key, self.inp)
         print(f"Stored all histograms in {self.inp.save_dir}hist.")
 
@@ -117,7 +116,7 @@ class Gaussian:
     def cluster(self, geometry_dict: dict):
         if self.n_jobs > 1:
             gmm_info = Parallel(n_jobs=self.n_jobs)(delayed(self.run_gmm)(geometry_dict, key)
-                                                    for key in tqdm(geometry_dict))
+                                                    for key in geometry_dict)
         else:
             gmm_info = [self.run_gmm(geometry_dict, key) for key in geometry_dict]
 
@@ -130,7 +129,7 @@ class Gaussian:
     def visualize(self, geometry_dict: dict):
         if self.inp.plot_gmm:
             print("Plot gaussian mixture models.")
-            for key in tqdm(self.gmm_dict, desc="GMM plot"):
+            for key in self.gmm_dict:
                 gmm_plot(
                     self.gmm_dict[key],
                     np.asarray(geometry_dict[key]).astype(np.float32),

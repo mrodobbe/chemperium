@@ -6,7 +6,6 @@ from importlib import resources
 import pickle
 from typing import List
 import numpy.typing as npt
-from tqdm import tqdm
 from rdkit.Chem import Mol
 
 
@@ -184,7 +183,7 @@ def make_topological_fingerprints(smiles_list: List[str], dad: bool = True, radi
     else:
         feature_dict = get_dihedral_dict(radius)
 
-    for smiles in tqdm(smiles_list):
+    for smiles in smiles_list:
         try:
             m = MolecularGraph(smiles)
             m.get_geometric_indices(radius)
@@ -215,7 +214,7 @@ class Featurizer:
 
     def get_all_features(self):
         print("Collecting all molecular geometry features...")
-        for molecule in tqdm(self.molecule_list):
+        for molecule in self.molecule_list:
             m = GaulMolecule(molecule, self.import_type, self.inp)
             if self.inp.fingerprint == "hdad":
                 m.get_all_features()
