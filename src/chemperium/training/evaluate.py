@@ -1,5 +1,5 @@
 from typing import Union, List
-from sklearn.metrics import r2_score
+from sklearn.metrics import classification_report, accuracy_score, roc_auc_score, f1_score, r2_score
 import warnings
 import numpy as np
 import numpy.typing as npt
@@ -38,14 +38,76 @@ def evaluate_training_model(model: Model,
         dl.scaler.inverse_transform(y_test)
         dl.scaler.inverse_transform(test_predictions)
 
-    test_error = abs(test_predictions - y_test)
-    mae = np.average(test_error)
-    rmse = np.sqrt(np.average(test_error ** 2))
-    r2 = r2_score(y_test, test_predictions)
+    if inp.activation == "softmax" or inp.activation == "sigmoid":
+        if len(y_test.shape) == 1:
+            pred_dict = {
+                "smiles": smiles,
+                f"{inp.property[0]}_prediction": test_predictions,
+                f"{inp.property[0]}_true": y_test
+            }
+            df_pred = pd.DataFrame(pred_dict)
 
-    print(f"MAE: {mae:.3f}")
-    print(f"RMSE: {rmse:.3f}")
-    print(f"R2: {r2:.3f}")
+        else:
+            pred_dict = {"smiles": smiles}
+            df_pred = pd.DataFrame(pred_dict)
+            for i in range(len(inp.property)):
+                df_pred[f"{inp.property[i]}_true"] = y_test[:, i]
+                df_pred[f"{inp.property[i]}_prediction"] = test_predictions[:, i]
+
+        if not inp.masked:
+            acc = accuracy_score(y_test, (test_predictions > 0.5))
+            f1 = f1_score(y_test, (test_predictions > 0.5), average='weighted')
+
+            print(f"Accuracy: {acc:.3f}")
+            print(f"F1 Score: {f1:.3f}")
+
+            # Other metrics for classification
+            report = classification_report(y_test, (test_predictions > 0.5))
+            print(report)
+
+    else:
+        if inp.masked and len(y_test.shape) > 1:
+            mae_list = []
+            rmse_list = []
+            r2_list = []
+            test_error = []
+
+            for i in range(y_test.shape[1]):  # Loop over each column
+                mask = ~np.isnan(y_test[:, i])  # Create a mask for non-NaN values in the i-th column
+                y_test_filtered = y_test[mask, i]
+                test_predictions_filtered = test_predictions[mask, i]
+
+                # Calculate errors
+                test_error_i = abs(test_predictions_filtered - y_test_filtered)
+                test_error.append(test_error_i)
+
+                # Calculate metrics for this column
+                mae_i = np.average(test_error_i)
+                rmse_i = np.sqrt(np.average(test_error_i ** 2))
+                r2_i = r2_score(y_test_filtered, test_predictions_filtered)
+
+                print(f"{inp.property[i]} MAE: {mae_i:.3f}")
+                print(f"{inp.property[i]} RMSE: {rmse_i:.3f}")
+                print(f"{inp.property[i]} R2: {r2_i:.3f}")
+
+                # Append metrics for this column
+                mae_list.append(mae_i)
+                rmse_list.append(rmse_i)
+                r2_list.append(r2_i)
+
+            mae = np.average(mae_list)
+            rmse = np.average(rmse_list)
+            r2 = np.average(r2_list)
+
+        else:
+            test_error = abs(test_predictions - y_test)
+            mae = np.average(test_error)
+            rmse = np.sqrt(np.average(test_error ** 2))
+            r2 = r2_score(y_test, test_predictions)
+
+        print(f"MAE: {mae:.3f}")
+        print(f"RMSE: {rmse:.3f}")
+        print(f"R2: {r2:.3f}")
 
     if len(y_test.shape) == 1:
         pred_dict = {f"{inp.property[0]} pred": test_predictions, f"{inp.property[0]} true": y_test,
@@ -100,43 +162,99 @@ def evaluate_ensemble(models: List[Model],
         else:
             ensemble = np.vstack((ensemble, test_predictions))
 
+    ensemble_predictions = np.array(ensemble)
+
     prediction = np.mean(ensemble, axis=0)
     if inp.scaler:
         dl.scaler.inverse_transform(y_test)
         dl.scaler.inverse_transform(prediction)
-    sd = np.std(ensemble, axis=0)
+    sd = np.std(ensemble_predictions, axis=0)
     if inp.scaler is True:
         sd = sd * dl.scaler.data_range_
-    abs_error = np.abs(prediction - y_test)
-    mae = np.average(abs_error)
-    rmse = np.sqrt(np.average(abs_error ** 2))
-    r2 = r2_score(y_test, prediction)
 
-    print(f"MAE: {mae:.3f}")
-    print(f"RMSE: {rmse:.3f}")
-    print(f"R2: {r2:.3f}")
+    if inp.activation == "softmax" or inp.activation == "sigmoid":
 
-    if len(y_test.shape) == 1:
-        pred_dict = {f"{inp.property[0]} pred": prediction, f"{inp.property[0]} true": y_test,
-                     "smiles": smiles, f"{inp.property[0]} error": abs_error, f"{inp.property[0]} sd": sd}
-        df_pred = pd.DataFrame(pred_dict)
-    else:
-        if "sigma" in inp.property:
-            pred_dict = {"smiles": smiles}
+        if len(y_test.shape) == 1:
+            pred_dict = {
+                "smiles": smiles,
+                f"{inp.property[0]}_prediction": prediction,
+                f"{inp.property[0]}_true": y_test,
+                f"{inp.property[0]}_sd": sd
+            }
+
             df_pred = pd.DataFrame(pred_dict)
-            for j in range(y_test.shape[1]):
-                df_pred[f"sig_{j} true"] = y_test[:, j]
-                df_pred[f"sig_{j} pred"] = prediction[:, j]
-                df_pred[f"sig_{j} error"] = abs_error[:, j]
-                df_pred[f"sig_{j} sd"] = sd[:, j]
         else:
             pred_dict = {"smiles": smiles}
             df_pred = pd.DataFrame(pred_dict)
             for i in range(len(inp.property)):
-                df_pred[f"{inp.property[i]} true"] = y_test[:, i]
-                df_pred[f"{inp.property[i]} pred"] = prediction[:, i]
-                df_pred[f"{inp.property[i]} error"] = abs_error[:, i]
-                df_pred[f"{inp.property[i]} sd"] = sd[:, i]
+                df_pred[f"{inp.property[i]}_true"] = y_test[:, i]
+                df_pred[f"{inp.property[i]}_prediction"] = prediction[:, i]
+                df_pred[f"{inp.property[i]}_sd"] = sd[:, i]
+
+    else:
+        if inp.masked and len(y_test.shape) > 1:
+            mae_list = []
+            rmse_list = []
+            r2_list = []
+            test_error = np.array([])
+
+            for i in range(y_test.shape[1]):  # Loop over each column
+                mask = ~np.isnan(y_test[:, i])  # Create a mask for non-NaN values in the i-th column
+                y_test_filtered = y_test[mask, i]
+                test_predictions_filtered = prediction[mask, i]
+
+                # Calculate errors
+                test_error_i = abs(test_predictions_filtered - y_test_filtered)
+
+                # Calculate metrics for this column
+                mae_i = np.average(test_error_i)
+                rmse_i = np.sqrt(np.average(test_error_i ** 2))
+                r2_i = r2_score(y_test_filtered, test_predictions_filtered)
+
+                print(f"{inp.property[i]} MAE: {mae_i:.3f}")
+                print(f"{inp.property[i]} RMSE: {rmse_i:.3f}")
+                print(f"{inp.property[i]} R2: {r2_i:.3f}")
+
+                # Append metrics for this column
+                mae_list.append(mae_i)
+                rmse_list.append(rmse_i)
+                r2_list.append(r2_i)
+
+            mae = np.average(mae_list)
+            rmse = np.average(rmse_list)
+            r2 = np.average(r2_list)
+        else:
+            test_error = abs(prediction - y_test)
+            mae = np.average(test_error)
+            rmse = np.sqrt(np.average(test_error ** 2))
+            r2 = r2_score(y_test, prediction)
+
+        print(f"MAE: {mae:.3f}")
+        print(f"RMSE: {rmse:.3f}")
+        print(f"R2: {r2:.3f}")
+
+        if len(y_test.shape) == 1:
+            pred_dict = {f"{inp.property[0]}_prediction": prediction, f"{inp.property[0]}_true": y_test,
+                         "smiles": smiles, f"{inp.property[0]}_error": test_error, f"{inp.property[0]}_sd": sd}
+            df_pred = pd.DataFrame(pred_dict)
+        else:
+            if "sigma" in inp.property:
+                pred_dict = {"smiles": smiles}
+                df_pred = pd.DataFrame(pred_dict)
+                for j in range(y_test.shape[1]):
+                    df_pred[f"sig_{j}_true"] = y_test[:, j]
+                    df_pred[f"sig_{j}_prediction"] = prediction[:, j]
+                    df_pred[f"sig_{j}_error"] = test_error[:, j]
+                    df_pred[f"sig_{j}_sd"] = sd[:, j]
+            else:
+                pred_dict = {"smiles": smiles}
+                df_pred = pd.DataFrame(pred_dict)
+                for i in range(len(inp.property)):
+                    df_pred[f"{inp.property[i]}_true"] = y_test[:, i]
+                    df_pred[f"{inp.property[i]}_prediction"] = prediction[:, i]
+                    if not inp.masked:
+                        df_pred[f"{inp.property[i]}_error"] = test_error[:, i]
+                    df_pred[f"{inp.property[i]}_sd"] = sd[:, i]
 
     return df_pred
 
