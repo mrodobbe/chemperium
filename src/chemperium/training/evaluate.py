@@ -30,9 +30,9 @@ def evaluate_training_model(model: Model,
     smiles = dl.smiles[test_indices]
     rdmol = dl.rdmol_list[test_indices]
     if len(y_test.shape) > 1:
-        test_predictions = np.asarray(model.predict([x_test])).astype(np.float32)
+        test_predictions = np.asarray(model.predict([x_test], verbose=0)).astype(np.float32)
     else:
-        test_predictions = model.predict([x_test]).reshape(-1)
+        test_predictions = model.predict([x_test], verbose=0).reshape(-1)
 
     if inp.scaler is True:
         dl.scaler.inverse_transform(y_test)
@@ -110,26 +110,26 @@ def evaluate_training_model(model: Model,
         print(f"R2: {r2:.3f}")
 
     if len(y_test.shape) == 1:
-        pred_dict = {f"{inp.property[0]} pred": test_predictions, f"{inp.property[0]} true": y_test,
-                     "smiles": smiles, f"{inp.property[0]} error": test_error}
+        pred_dict = {f"{inp.property[0]}_prediction": test_predictions, f"{inp.property[0]}_true": y_test,
+                     "smiles": smiles, f"{inp.property[0]}_error": test_error}
         df_pred = pd.DataFrame(pred_dict)
     else:
         if inp.property == "sigma":
             pred_dict = {"smiles": smiles}
             df_pred = pd.DataFrame(pred_dict)
             for j in range(y_test.shape[1]):
-                df_pred[f"sig_{j} true"] = y_test[:, j]
+                df_pred[f"sig_{j}_true"] = y_test[:, j]
             for j in range(y_test.shape[1]):
-                df_pred[f"sig_{j} pred"] = test_predictions[:, j]
+                df_pred[f"sig_{j}_prediction"] = test_predictions[:, j]
             for j in range(y_test.shape[1]):
-                df_pred[f"sig_{j} error"] = test_error[:, j]
+                df_pred[f"sig_{j}_error"] = test_error[:, j]
         else:
             pred_dict = {"smiles": smiles}
             df_pred = pd.DataFrame(pred_dict)
             for i in range(len(inp.property)):
-                df_pred[f"{inp.property[i]} true"] = y_test[:, i]
-                df_pred[f"{inp.property[i]} pred"] = test_predictions[:, i]
-                df_pred[f"{inp.property[i]} error"] = test_error[:, i]
+                df_pred[f"{inp.property[i]}_true"] = y_test[:, i]
+                df_pred[f"{inp.property[i]}_prediction"] = test_predictions[:, i]
+                df_pred[f"{inp.property[i]}_error"] = test_error[:, i]
 
     return df_pred
 
@@ -153,9 +153,9 @@ def evaluate_ensemble(models: List[Model],
     ensemble = np.array([])
     for model in models:
         if len(y_test.shape) > 1:
-            test_predictions = np.asarray(model.predict([x_test])).astype(np.float32)
+            test_predictions = np.asarray(model.predict([x_test], verbose=0)).astype(np.float32)
         else:
-            test_predictions = model.predict([x_test]).reshape(-1)
+            test_predictions = model.predict([x_test], verbose=0).reshape(-1)
         test_predictions = tf.constant(test_predictions)[tf.newaxis, :]
         if len(ensemble) == 0:
             ensemble = test_predictions
@@ -343,7 +343,7 @@ def external_model_test(model: Model,
     else:
         output_shape = len(inp.property)
 
-    test_predictions = np.asarray(model.predict([x_test])).astype(np.float32)
+    test_predictions = np.asarray(model.predict([x_test], verbose=0)).astype(np.float32)
 
     print(test_predictions)
 
