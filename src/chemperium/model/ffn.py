@@ -42,7 +42,6 @@ class NeuralNetwork:
 
         # model = keras.Sequential(nn_layers)
 
-        model.summary()
         model.compile(loss='mean_squared_error',
                       optimizer="Adam",
                       metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
