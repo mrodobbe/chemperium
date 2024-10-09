@@ -54,11 +54,20 @@ def df_from_csv(fname: str,
         raise KeyError("No column with SMILES detected in the DataFrame. Please add a column named smiles.")
 
     if include_3d and not ff_3d:
-        if "xyz" not in list(df.keys()) and not ff_3d and "molblock" not in list(df.keys()):
+        if "xyz" not in list(df.keys()) \
+                and not ff_3d and "molblock" not in list(df.keys()) and "mol2block" not in list(df.keys()):
             raise KeyError("XYZ coordinates not provided!")
         if "RDMol" not in df.keys():
             df["RDMol"] = ""
-        if "molblock" in list(df.keys()):
+        if "mol2block" in list(df.keys()):
+            for i in df.index:
+                mol = Chem.MolFromMol2Block(df["mol2block"][i], removeHs=False)
+                if mol is None:
+                    print(f"WARNING! Could not parse {df[smiles_key][i]}!")
+                    df = df.drop(i)
+                else:
+                    df.loc[i, "RDMol"] = mol
+        elif "molblock" in list(df.keys()):
             for i in df.index:
                 mol = Chem.MolFromMolBlock(df["molblock"][i], removeHs=False)
                 if mol is None:
