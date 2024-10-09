@@ -286,7 +286,7 @@ def test_external_dataset(models: Union[Model, List[Model]],
     :param return_results: (Optional) Return results as pandas dataframe. Will by default write results to a file.
     :return: (Optional) Pandas DataFrame with predictions
     """
-
+    inp.gmm_file = inp.save_dir + "/gmm_dictionary.pickle"
     if dl is None:
         print("Start loading the test file...")
         inp.input_file = inp.test_file
