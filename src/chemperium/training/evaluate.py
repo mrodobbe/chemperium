@@ -38,6 +38,11 @@ def evaluate_training_model(model: Model,
         dl.scaler.inverse_transform(y_test)
         dl.scaler.inverse_transform(test_predictions)
 
+    if len(y_test.shape) > 1:
+        if y_test.shape[1] == 1:
+            y_test = y_test.reshape(-1)
+            test_predictions = test_predictions.reshape(-1)
+
     if inp.activation == "softmax" or inp.activation == "sigmoid":
         if len(y_test.shape) == 1:
             pred_dict = {
@@ -109,9 +114,27 @@ def evaluate_training_model(model: Model,
         print(f"RMSE: {rmse:.3f}")
         print(f"R2: {r2:.3f}")
 
-    if len(y_test.shape) == 1:
+    if len(y_test.shape) == 1 and inp.activation == "linear":
         pred_dict = {f"{inp.property[0]}_prediction": test_predictions, f"{inp.property[0]}_true": y_test,
                      "smiles": smiles, f"{inp.property[0]}_error": test_error}
+        df_pred = pd.DataFrame(pred_dict)
+    elif len(y_test.shape) == 1 and inp.activation != "linear":
+        pred_dict = {f"{inp.property[0]}_prediction": test_predictions, f"{inp.property[0]}_true": y_test,
+                     "smiles": smiles}
+        df_pred = pd.DataFrame(pred_dict)
+    elif y_test.shape[1] == 1 and inp.activation == "linear":
+        pred_dict = {
+            f"{inp.property[0]}_prediction": test_predictions.reshape(-1),
+            f"{inp.property[0]}_true": y_test.reshape(-1),
+            "smiles": smiles, f"{inp.property[0]}_error": test_error
+        }
+        df_pred = pd.DataFrame(pred_dict)
+    elif y_test.shape[1] == 1 and inp.activation != "linear":
+        pred_dict = {
+            f"{inp.property[0]}_prediction": test_predictions.reshape(-1),
+            f"{inp.property[0]}_true": y_test.reshape(-1),
+            "smiles": smiles
+        }
         df_pred = pd.DataFrame(pred_dict)
     else:
         if inp.property == "sigma":
@@ -129,7 +152,8 @@ def evaluate_training_model(model: Model,
             for i in range(len(inp.property)):
                 df_pred[f"{inp.property[i]}_true"] = y_test[:, i]
                 df_pred[f"{inp.property[i]}_prediction"] = test_predictions[:, i]
-                df_pred[f"{inp.property[i]}_error"] = test_error[:, i]
+                if not inp.masked and inp.activation == "linear":
+                    df_pred[f"{inp.property[i]}_error"] = test_error[:, i]
 
     return df_pred
 
@@ -168,9 +192,19 @@ def evaluate_ensemble(models: List[Model],
     if inp.scaler:
         dl.scaler.inverse_transform(y_test)
         dl.scaler.inverse_transform(prediction)
+
+    if len(y_test.shape) > 1:
+        if y_test.shape[1] == 1:
+            y_test = y_test.reshape(-1)
+            prediction = prediction.reshape(-1)
+
     sd = np.std(ensemble_predictions, axis=0)
     if inp.scaler is True:
         sd = sd * dl.scaler.data_range_
+
+    if len(sd.shape) > 1:
+        if sd.shape[1] == 1:
+            sd = sd.reshape(-1)
 
     if inp.activation == "softmax" or inp.activation == "sigmoid":
 
@@ -335,8 +369,8 @@ def external_model_test(model: Model,
     if inp.fingerprint is None:
         x_test, y_test = prepare_batch(x_test, y_test)
 
-    with open(f"{inp.save_dir}/xtest.pkl", "wb") as pkl:
-        pickle.dump(x_test, pkl)
+    # with open(f"{inp.save_dir}/xtest.pkl", "wb") as pkl:
+    #     pickle.dump(x_test, pkl)
 
     if inp.property == "sigma":
         output_shape = 55
