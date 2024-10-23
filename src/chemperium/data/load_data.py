@@ -84,14 +84,26 @@ class DataLoader:
         if self.inp.ff_3d:
             mols = []
             for i in self.df.index:
-                smi = self.df["smiles"][i]
+                if "smiles" in self.df.keys():
+                    smi = self.df["smiles"][i]
+                elif "SMILES" in self.df.keys():
+                    smi = self.df["SMILES"][i]
+                elif "isosmiles" in self.df.keys():
+                    smi = self.df["isosmiles"][i]
+                else:
+                    raise KeyError("No smiles column found!")
+
                 m = Chem.MolFromSmiles(smi)
                 if m is None:
                     print(f"{smi} cannot be parsed!")
+                    self.df = self.df.drop(i)
+                    continue
                 if not self.inp.no_hydrogens:
                     m = Chem.AddHs(m)
                 if m is None:
                     print(f"{smi} cannot be parsed!")
+                    self.df = self.df.drop(i)
+                    continue
                 try:
                     AllChem.EmbedMolecule(m, randomSeed=0xf00d)
                     AllChem.MMFFOptimizeMolecule(m)
@@ -137,6 +149,9 @@ class DataLoader:
             if "isosmiles" in self.df.keys():
                 key_value = "isosmiles"
                 self.df["smiles"] = self.df["isosmiles"].tolist()
+            elif "SMILES" in self.df.keys():
+                key_value = "SMILES"
+                self.df["smiles"] = self.df["SMILES"].tolist()
             else:
                 key_value = "smiles"
             for i in self.df.index:
@@ -144,20 +159,20 @@ class DataLoader:
 
                 if mol is None:
                     self.df = self.df.drop(i)
-                elif not self.inp.no_hydrogens:
-                    mol = Chem.AddHs(mol)
-                else:
-                    pass
+                    continue
 
-                if mol is not None:
-                    if mol.GetNumBonds() < 75:
-                        mols.append(mol)
-                    else:
-                        self.df = self.df.drop(i)
-                else:
+                if not self.inp.no_hydrogens:
+                    mol = Chem.AddHs(mol)
+
+                if self.inp.fingerprint is None and mol.GetNumBonds() >= 75:
                     self.df = self.df.drop(i)
+                    continue
+                else:
+                    mols.append(mol)
+
             self.df["RDMol"] = mols
             return mols
+
         else:
             return self.df["RDMol"].to_list()
 
