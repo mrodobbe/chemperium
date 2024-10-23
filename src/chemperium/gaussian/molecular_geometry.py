@@ -658,13 +658,18 @@ class GaulMolecule:
         mol = Chem.AddHs(self.molecule)
         params = AllChem.ETKDGv3()
         params.useSmallRingTorsions = True
-        em = AllChem.EmbedMolecule(mol, params=params)
-        if em < 0:
-            emr = AllChem.EmbedMolecule(mol, useRandomCoords=True)
-            if emr < 0:
-                smi = Chem.MolToSmiles(self.molecule)
-                print(f"Molecule {smi} cannot be embedded.")
-                self.bad_molecule = True
+        try:
+            em = AllChem.EmbedMolecule(mol, params=params)
+            if em < 0:
+                emr = AllChem.EmbedMolecule(mol, useRandomCoords=True)
+                if emr < 0:
+                    smi = Chem.MolToSmiles(self.molecule)
+                    print(f"Molecule {smi} cannot be embedded.")
+                    self.bad_molecule = True
+        except RuntimeError:
+            self.bad_molecule = True
+            smi = Chem.MolToSmiles(self.molecule)
+            print(f"Molecule {smi} cannot be embedded.")
 
         if not self.bad_molecule:
             AllChem.MMFFOptimizeMolecule(mol, maxIters=10000)
