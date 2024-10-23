@@ -10,6 +10,7 @@ from chemperium.molecule.batch import MPNNDataset, prepare_batch
 from sklearn.model_selection import KFold
 from keras.callbacks import EarlyStopping
 from keras.losses import BinaryCrossentropy, CategoricalCrossentropy, mean_squared_error
+from keras import Sequential
 from chemperium.training.evaluate import *
 import gc
 from typing import Union, List, Tuple
@@ -102,6 +103,8 @@ def run_model(x: Tuple[tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor,
             mfd=inp.mfd,
             seed=inp.seed,
             activation=inp.activation,
+            hidden_activation=inp.hidden_activation,
+            message_activation=inp.message_activation,
             dropout=inp.dropout,
             batch_normalization=inp.batch_normalization,
             l2_value=inp.l2
@@ -247,7 +250,7 @@ def run_transfer(dl_large: DataLoader,
 
     del dl_large
     gc.collect()
-    if inp.locked_transfer:
+    if inp.locked_transfer and inp.fingerprint is None:
         if inp.ensemble:
             for model in models:
                 for layer in model.layers[:9]:
@@ -258,11 +261,21 @@ def run_transfer(dl_large: DataLoader,
         else:
             raise TypeError("Incorrect Keras model type.")
 
+    elif inp.fingerprint is not None:
+        if inp.ensemble:
+            for model in models:
+                for layer in model.layers[:-2]:
+                    layer.trainable = False
+        elif type(models) is Model or type(models) is Sequential:
+            for layer in models.layers[:-2]:
+                layer.trainable = False
+        else:
+            raise TypeError("Incorrect Keras model type.")
+
     print("Start loading the transfer file...")
     inp.input_file = inp.transfer_file
     inp.property = inp.transfer_property
-    print(f"New input file: {inp.input_file}")
-    print(f"Transfer file: {inp.transfer_file}")
+    inp.gmm_file = inp.save_dir + "/gmm_dictionary.pickle"
 
     dl_small = DataLoader(input_pars=inp, transfer=True)
     if inp.test:

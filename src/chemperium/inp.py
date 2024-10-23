@@ -15,7 +15,8 @@ class ArgParser:
         self.parser.add_argument("--transfer_data", type=str, help="Choose transfer data")
         self.parser.add_argument("--transfer_property", type=str, help="Choose property to be predicted")
         self.parser.add_argument("--activation", type=str, help="Choose output activation", default="linear")
-        self.parser.add_argument("--hidden_activation", type=str, help="Choose output activation", default="LeakyReLU")
+        self.parser.add_argument("--hidden_activation", type=str, help="Choose hidden activation", default="LeakyReLU")
+        self.parser.add_argument("--message_activation", type=str, help="Choose message activation", default="ReLU")
 
         self.parser.add_argument("--batch", type=int, help="Choose batch size", default=128)
         self.parser.add_argument("--transfer_batch", type=int, help="Choose batch size for transfer data", default=128)
@@ -144,6 +145,7 @@ class InputArguments:
         self.num_layers = args.num_layers
         self.hidden_size = args.hidden_size
         self.hidden_activation = args.hidden_activation
+        self.message_activation = args.message_activation
         self.activation = args.activation
         self.dropout = args.dropout
         self.batch_normalization = args.batch_normalization

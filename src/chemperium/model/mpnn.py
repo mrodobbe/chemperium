@@ -1,17 +1,20 @@
 from keras.layers import Layer, Dropout, BatchNormalization
 from keras.models import Model
-from keras.layers import Dense, Input, LeakyReLU, Concatenate
+from keras.layers import Dense, Input, LeakyReLU, Concatenate, Activation
+from keras import activations
 from keras.regularizers import l2
 import tensorflow as tf
+from typing import Union
 from chemperium.inp import InputArguments
 # mypy: allow-untyped-defs
 # mypy: allow-untyped-calls
 
 
 class BondInputFeatures(Layer):  # type: ignore[misc]
-    def __init__(self, hidden_size: int = 64):
+    def __init__(self, hidden_size: int = 64, message_activation: str = "leaky_relu"):
         super().__init__()
         self.hidden_size = hidden_size
+        self.message_activation = message_activation
 
     def get_config(self):
         config = super().get_config()
@@ -45,7 +48,8 @@ class BondInputFeatures(Layer):  # type: ignore[misc]
     def call(self, inputs):
         bond_representations = inputs
         self.bond_inputs = tf.matmul(bond_representations, self.W_ib) + self.b_ib
-        self.bond_inputs = tf.nn.relu(self.bond_inputs)
+        # self.bond_inputs = tf.nn.relu(self.bond_inputs)
+        self.bond_inputs = message_activation_function(self.message_activation)(self.bond_inputs)
 
         return self.bond_inputs
 
@@ -112,12 +116,21 @@ class DirectedEdgeMessage(Layer):  # type: ignore[misc]
 
 
 class MessagePassing(Layer):  # type: ignore[misc]
-    def __init__(self, hidden_size: int = 64, depth: int = 4, include_3d: bool = True, mean_readout: bool = False, **kwargs):  # type: ignore[no-untyped-def]
+    def __init__(
+            self,
+            hidden_size: int = 64,
+            depth: int = 4,
+            include_3d: bool = True,
+            mean_readout: bool = False,
+            message_activation: str = "leaky_relu",
+            **kwargs
+    ):  # type: ignore[no-untyped-def]
         super().__init__()
         self.hidden_size = hidden_size
         self.depth = depth
         self.include_3d = include_3d
         self.mean_readout = mean_readout
+        self.message_activation = message_activation
 
     def get_config(self):
         config = super().get_config()
@@ -134,9 +147,12 @@ class MessagePassing(Layer):  # type: ignore[misc]
         return cls(**config)
 
     def build(self, input_shape):
-        self.bond_input_step = BondInputFeatures(self.hidden_size)
-        self.edge_message_step = DirectedEdgeMessage(self.hidden_size,
-                                                     self.include_3d, mean_readout=self.mean_readout)
+        self.bond_input_step = BondInputFeatures(self.hidden_size, message_activation=self.message_activation)
+        self.edge_message_step = DirectedEdgeMessage(
+            self.hidden_size,
+            self.include_3d,
+            mean_readout=self.mean_readout
+        )
 
         self.W_m = self.add_weight(
             shape=(self.hidden_size, self.hidden_size),
@@ -174,19 +190,36 @@ class MessagePassing(Layer):  # type: ignore[misc]
         for i in range(self.depth):
             bond_message = self.edge_message_step([bond_representations, bond_pairs, bond_neighbors, xyz])
             bond_message_x = tf.matmul(bond_message, self.W_m) + self.b_m
-            bond_message_x = tf.nn.relu(bond_message_x)
+            # bond_message_x = tf.nn.relu(bond_message_x)
+            bond_message_x = message_activation_function(self.message_activation)(bond_message_x)
 
             updated_bond = bond_representations + bond_message_x
-            bond_representations = tf.nn.relu(tf.matmul(updated_bond, self.W_hm) + self.b_hm)
+            # bond_representations = tf.nn.relu(tf.matmul(updated_bond, self.W_hm) + self.b_hm)
+            bond_representations = message_activation_function(
+                self.message_activation
+            )(
+                tf.matmul(
+                    updated_bond,
+                    self.W_hm
+                ) + self.b_hm
+            )
 
         return bond_representations
 
 
 class Readout(Layer):  # type: ignore[misc]
-    def __init__(self, hidden_size: int = 256, mean_readout: bool = False, **kwargs):  # type: ignore[no-untyped-def]
+    def __init__(
+            self,
+            hidden_size: int = 256,
+            mean_readout: bool = False,
+            message_activation: str = "leaky_relu",
+            **kwargs
+    ):  # type: ignore[no-untyped-def]
+
         super().__init__()
         self.hidden_size = hidden_size
         self.mean_readout = mean_readout
+        self.message_activation = message_activation
 
     def get_config(self):
         config = super().get_config()
@@ -230,7 +263,8 @@ class Readout(Layer):  # type: ignore[misc]
         cat_atomic_messages = tf.concat([atomic_features, atomic_messages], axis=2)
 
         h_atoms = tf.matmul(cat_atomic_messages, self.W_o) + self.b_o
-        h_atoms = tf.nn.relu(h_atoms)
+        # h_atoms = tf.nn.relu(h_atoms)
+        h_atoms = message_activation_function(self.message_activation)(h_atoms)
 
         if self.mean_readout:
             h_molecule = tf.reduce_mean(h_atoms, axis=1)
@@ -255,6 +289,8 @@ def MPNN(
         mfd_size: int = 64,
         seed: int = 210995,
         activation: str = "linear",
+        hidden_activation: str = "LeakyReLU",
+        message_activation: str = "LeakyReLU",
         dropout: float = 0.0,
         batch_normalization: bool = False,
         l2_value: float = 0.0
@@ -270,7 +306,7 @@ def MPNN(
     atom_neighbors = Input(shape=[100, 8], dtype=tf.int64, name="atom_neighbors")
     atom_bond_neighbors = Input(shape=[100, 8], dtype=tf.int64, name="atom_bond_neighbors")
 
-    bonds_t = MessagePassing(hidden_message, depth, include_3d, mean_readout)(
+    bonds_t = MessagePassing(hidden_message, depth, include_3d, mean_readout, message_activation)(
         [bond_features,
          bond_pairs,
          bond_neighbors,
@@ -278,17 +314,19 @@ def MPNN(
          xyz]
         )
 
-    x = Readout(representation_size)([bonds_t, atom_features, atom_bond_neighbors])
+    x = Readout(representation_size, mean_readout, message_activation)([bonds_t, atom_features, atom_bond_neighbors])
     if mfd:
         mx = Dense(mfd_size)(molecular_features)
-        mx = LeakyReLU()(mx)
+        # mx = LeakyReLU()(mx)
+        mx = activation_function(hidden_activation, "mfd")(mx)
         mx = tf.squeeze(mx, [1])
         x = Concatenate()([x, mx])
 
     for layer in range(layers):
         x = Dense(hidden_size, kernel_regularizer=l2(l2_value))(x)
         x = BatchNormalization()(x) if batch_normalization else x  # Batch Normalization
-        x = LeakyReLU()(x)
+        # x = LeakyReLU()(x)
+        x = activation_function(hidden_activation, layer)(x)
         x = Dropout(dropout)(x) if dropout > 0 else x  # Dropout Layer
 
     x = Dense(d_out, activation=activation)(x)
@@ -297,3 +335,46 @@ def MPNN(
                           bond_neighbors, atom_neighbors, atom_bond_neighbors, molecular_features], outputs=[x])
 
     return model
+
+
+def activation_function(activation: str, layer: Union[int, str]):
+    layer = str(layer)
+    if activation.lower() == 'relu':
+        return Activation(activations.relu, name="ReLU_" + layer)
+    elif activation.lower() == "leakyrelu" or activation.lower() == "leaky_relu":
+        return LeakyReLU(name="LeakyReLU_" + layer)
+    elif activation.lower() == "swish":
+        return Activation(activations.swish, name="swish_" + layer)
+    elif activation.lower() == "tanh":
+        return Activation(activations.tanh, name="tanh_" + layer)
+    elif activation.lower() == "selu":
+        return Activation(activations.selu, name="selu_" + layer)
+    elif activation.lower() == "elu":
+        return Activation(activations.elu, name="elu_" + layer)
+    elif activation.lower() == "sigmoid":
+        return Activation(activations.sigmoid, name="sigmoid_" + layer)
+    else:
+        raise ValueError(f'Activation "{activation}" not supported.')
+
+
+def message_activation_function(activation: str):
+    if activation.lower() == 'relu':
+        return tf.nn.relu
+    elif activation.lower() == "leakyrelu" or activation.lower() == "leaky_relu":
+        return tf.nn.leaky_relu
+    elif activation.lower() == "swish":
+        return tf.nn.swish
+    elif activation.lower() == "tanh":
+        return tf.nn.tanh
+    elif activation.lower() == "selu":
+        return tf.nn.selu
+    elif activation.lower() == "elu":
+        return tf.nn.elu
+    elif activation.lower() == "sigmoid":
+        return tf.nn.sigmoid
+    elif activation.lower() == "gelu":
+        return tf.nn.gelu
+    elif activation.lower() == "relu6":
+        return tf.nn.gelu
+    else:
+        raise ValueError(f'Activation "{activation}" not supported.')
