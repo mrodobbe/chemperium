@@ -40,14 +40,21 @@ class MolFeatureVector:
     def construct_vector(self):
         name_features = self.mol.name_all_features
         features = self.mol.all_features
+        representation_dict = {}
+        for key in self.gmm_dict.keys():
+            type_feature = sum(1 for c in key if c.isupper())
+            if type_feature == 4:
+                representation_dict[key] = np.zeros(5).astype(np.float32)
+            else:
+                representation_dict[key] = np.zeros(3).astype(np.float32)
+        self.vector = dict_to_vector(representation_dict)
+
         for i in range(len(features)):
             if name_features[i] in self.gmm_dict.keys():
                 f = GeometricFeatureVector(name_features[i], features[i], self.gmm_dict)
                 f.construct_vector()
-                if self.vector is None:
-                    self.vector = f.vector
-                else:
-                    self.vector = np.add(self.vector, f.vector)
+                self.vector = np.add(self.vector, f.vector)
+
         self.add_molecular_features()
 
         return self.vector
