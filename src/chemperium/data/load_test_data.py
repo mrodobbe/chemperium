@@ -104,7 +104,7 @@ def read_csv(inp: Union[TestInputArguments, InputArguments],
     if smiles is None:
         csv = inp.test_file
         df_in = pd.read_csv(csv, index_col=None)
-        smiles = df_in[0].tolist()
+        smiles = df_in.iloc[:, 0].tolist()
         if inp.include_3d and xyz_list is not None:
             xyz_list = df_in[1].tolist()
         elif inp.include_3d and xyz_list is None:
