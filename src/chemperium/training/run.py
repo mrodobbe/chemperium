@@ -379,7 +379,8 @@ def masked_binary_crossentropy(y_true, y_pred):
     mask = ~tf.math.is_nan(y_true)  # Create a mask where True if y_true is not NaN
     masked_y_true = tf.boolean_mask(y_true, mask)  # Apply mask to ground truth
     masked_y_pred = tf.boolean_mask(y_pred, mask)  # Apply mask to predictions
-    return tf.reduce_mean(BinaryCrossentropy(masked_y_true - masked_y_pred))  # Compute MSE
+    bce = BinaryCrossentropy()  # Instantiate loss function
+    return bce(masked_y_true, masked_y_pred)  # Compute BCE
 
 
 def masked_mean_squared_error(y_true, y_pred):
